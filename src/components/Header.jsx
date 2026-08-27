@@ -6,7 +6,7 @@ export default function Header() {
     <header
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
-        display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16,
+        display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px 16px',
         padding: '20px clamp(18px,3.2vw,44px)',
         background: 'linear-gradient(180deg,rgba(11,13,12,.72) 0%,rgba(11,13,12,.28) 62%,rgba(11,13,12,0) 100%)',
         backdropFilter: 'blur(12px) saturate(150%)', WebkitBackdropFilter: 'blur(12px) saturate(150%)'
@@ -33,7 +33,7 @@ export default function Header() {
           </span>
         </span>
       </a>
-      <nav style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4 }}>
+      <nav style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4, marginLeft: 'auto' }}>
         <a
           href={EMAIL_HREF}
           target="_blank"

@@ -36,8 +36,8 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 }
 
 @media (max-aspect-ratio: 3/2) {
-  html, body { overflow: auto !important; }
-  [data-root] { height: auto !important; min-height: 100dvh; overflow: visible !important; }
+  html, body, #root { height: auto !important; overflow: auto !important; }
+  [data-root] { height: auto !important; min-height: 0 !important; overflow: visible !important; }
   [data-stage] { position: relative !important; height: auto !important; }
   [data-marqueebar] { position: static !important; }
   [data-room] { position: relative !important; top: auto !important; left: auto !important; width: 100vw !important; transform: none !important; }

@@ -2,8 +2,8 @@ export default function PanelHeader({ label, closeRef, onClose }) {
   return (
     <div
       style={{
-        position: 'sticky', top: 0, zIndex: 12, display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', gap: 16, padding: '16px clamp(18px,3.2vw,44px)',
+        position: 'sticky', top: 0, zIndex: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center',
+        justifyContent: 'space-between', gap: '10px 16px', padding: '16px clamp(18px,3.2vw,44px)',
         background: 'rgba(11,13,12,.42)', backdropFilter: 'blur(18px) saturate(160%)',
         WebkitBackdropFilter: 'blur(18px) saturate(160%)', borderBottom: '1px solid rgba(247,240,240,.1)'
       }}
@@ -16,7 +16,7 @@ export default function PanelHeader({ label, closeRef, onClose }) {
         ref={closeRef}
         onClick={onClose}
         style={{
-          display: 'inline-flex', alignItems: 'center', gap: 9, padding: '10px 15px',
+          display: 'inline-flex', alignItems: 'center', gap: 9, padding: '10px 15px', flexShrink: 0, marginLeft: 'auto',
           border: '1px solid rgba(247,240,240,.16)', borderRadius: 999, fontSize: 10,
           letterSpacing: '.2em', textTransform: 'uppercase', background: 'rgba(247,240,240,.04)', minHeight: 40
         }}
