@@ -25,7 +25,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
             Technical <em style={{ fontStyle: 'italic', color: '#E0A6BE' }}>Projects</em>
           </h1>
           <p data-in="" style={{ margin: 'clamp(26px,4vh,44px) 0 0', maxWidth: '52ch', fontSize: 'clamp(14.5px,1.15vw,18px)', fontWeight: 300, lineHeight: 1.62, color: 'rgba(247,240,240,.72)', textWrap: 'pretty' }}>
-            Products I shipped as the person holding the problem: scoping it, designing it, then writing enough of it to know whether the idea actually survives contact with a build.
+            Products I&rsquo;ve shipped with teams at hackathons, designathons and productathons, on my own, and at work. In each one I was the person holding the problem: scoping it, designing it, then writing enough of it to know whether the idea actually survives contact with a build.
           </p>
         </div>
 
@@ -38,6 +38,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
             );
             const text = (
               <span data-reveal="" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(9px,1.2vh,16px)' }}>
+                <span style={{ fontSize: 9.5, letterSpacing: '.24em', lineHeight: 1.6, textTransform: 'uppercase', color: '#E0A6BE' }}>{p.context}</span>
                 <span data-worktitle="" style={{ fontWeight: 200, fontSize: 'clamp(38px,6.4vw,104px)', lineHeight: 0.94, letterSpacing: '-.035em', color: '#C8E9C4', transition: 'color .45s' }}>
                   {p.title}
                 </span>
@@ -72,6 +73,18 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
               </a>
             );
           })}
+        </div>
+
+        <div data-reveal="" style={{ padding: 'clamp(24px,5vh,70px) clamp(18px,3.2vw,44px) 0' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(10px,1.4vh,18px)', padding: 'clamp(22px,3vw,44px)', border: '1px dashed rgba(224,166,190,.34)', borderRadius: 14, background: 'rgba(92,0,41,.12)' }}>
+            <span style={{ fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#E0A6BE' }}>Future project · In progress</span>
+            <span style={{ fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(26px,3.6vw,56px)', lineHeight: 1.05, letterSpacing: '-.025em', color: '#F7F0F0', textWrap: 'balance' }}>
+              Something for music transcription.
+            </span>
+            <span style={{ maxWidth: '46ch', fontSize: 'clamp(14px,1.1vw,17px)', fontWeight: 300, lineHeight: 1.6, color: 'rgba(247,240,240,.66)' }}>
+              I&rsquo;m building it now. More here once there&rsquo;s something to play with.
+            </span>
+          </div>
         </div>
 
         <div data-reveal="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 20, padding: 'clamp(38px,6vh,80px) clamp(18px,3.2vw,44px) clamp(58px,9vh,120px)' }}>

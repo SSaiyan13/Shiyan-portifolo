@@ -1,6 +1,7 @@
 export const workProjects = [
   {
     title: 'Launchpath',
+    context: 'Productathon · ProduHacks 2026',
     subtitle: 'Team-level onboarding platform powered by AI.',
     href: 'https://devpost.com/software/launchpath',
     linkLabel: 'Devpost',
@@ -9,16 +10,18 @@ export const workProjects = [
     imageFirst: true
   },
   {
-    title: 'Jotly',
+    title: 'Jolty',
+    context: 'Hackathon · Produchackathon · 1st place overall',
     subtitle: 'An app to build your creative muscle.',
     href: 'https://devpost.com/software/jotly',
     linkLabel: 'Devpost',
     image: '/assets/work-jolty.png',
-    alt: 'Jotly solution slide showing the app onboarding screen',
+    alt: 'Jolty solution slide showing the app onboarding screen',
     imageFirst: false
   },
   {
     title: 'Planless',
+    context: 'Designathon · UBC UX Hub UXathon 2026 · 2nd place, Beginner Stream',
     subtitle: 'iMessage extension that helps you plan events.',
     href: 'https://devpost.com/software/uxathon-plan-less',
     linkLabel: 'Devpost',
@@ -28,6 +31,7 @@ export const workProjects = [
   },
   {
     title: 'Sodelic',
+    context: 'Career · UX/UI Intern',
     subtitle: 'Simplifies project scope and keeps teams aligned from start to delivery.',
     href: 'https://www.sodelic.com/',
     linkLabel: 'sodelic.com',

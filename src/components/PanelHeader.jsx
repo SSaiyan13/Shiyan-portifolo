@@ -4,7 +4,7 @@ export default function PanelHeader({ label, closeRef, onClose }) {
       style={{
         position: 'sticky', top: 0, zIndex: 12, display: 'flex', flexWrap: 'wrap', alignItems: 'center',
         justifyContent: 'space-between', gap: '10px 16px', padding: '16px clamp(18px,3.2vw,44px)',
-        background: 'rgba(11,13,12,.42)', backdropFilter: 'blur(18px) saturate(160%)',
+        background: 'rgba(11,13,12,.88)', backdropFilter: 'blur(18px) saturate(160%)',
         WebkitBackdropFilter: 'blur(18px) saturate(160%)', borderBottom: '1px solid rgba(247,240,240,.1)'
       }}
     >

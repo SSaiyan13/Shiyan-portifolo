@@ -26,6 +26,16 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 
 @keyframes sg-hint { 0%, 100% { transform: scale(1); opacity: .55; } 50% { transform: scale(1.5); opacity: 1; } }
 [data-hintdot] { animation: sg-hint 2.2s ease-in-out infinite; }
+
+/* The clickable objects breathe in time with the hint's dot: a brighter copy of each
+   ring fades in and out over the resting one, so only opacity is animated. */
+@keyframes sg-ring { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
+[data-ring]::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
+  box-shadow: 0 0 0 1px rgba(224,166,190,.6), 0 0 34px 7px rgba(142,6,64,.62), inset 0 0 22px rgba(142,6,64,.22);
+  animation: sg-ring 2.2s ease-in-out infinite;
+}
+[data-hot]:hover [data-ring]::after, [data-hot]:focus-visible [data-ring]::after { animation: none; }
 [data-hint-touch] { display: none; }
 @media (hover: none) {
   [data-hint-hover] { display: none; }
@@ -68,7 +78,7 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
   }
   /* Nothing sits over the room here, so its edges are shaded far less than on desktop. */
   [data-vignette="round"] { background: radial-gradient(92% 78% at 50% 50%,rgba(11,13,12,0) 48%,rgba(11,13,12,.5) 100%) !important; }
-  [data-vignette="ends"] { background: linear-gradient(180deg,rgba(11,13,12,.4) 0%,rgba(11,13,12,0) 16%,rgba(11,13,12,0) 80%,rgba(11,13,12,.75) 100%) !important; }
+  [data-vignette="ends"] { background: linear-gradient(180deg,rgba(11,13,12,.14) 0%,rgba(11,13,12,0) 12%,rgba(11,13,12,0) 80%,rgba(11,13,12,.75) 100%) !important; }
   [data-heroaside] { position: static !important; max-width: 46ch !important; padding: clamp(26px,4vw,48px) clamp(18px,3.2vw,44px) clamp(20px,3vw,34px) !important; }
   [data-mobileindex] { display: grid !important; }
   [data-panelhead] { padding-top: 82px !important; }
@@ -113,4 +123,5 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 @media (prefers-reduced-motion: reduce) {
   [data-marquee] { animation: none !important; }
   [data-hintdot] { animation: none; opacity: 1; }
+  [data-ring]::after { animation: none; }
 }
