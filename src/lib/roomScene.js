@@ -68,13 +68,23 @@ const POLAROIDS_PX = [
   [[1485.5, 363.5], [1514.5, 361], [1514.5, 435], [1485.5, 437.5]]
 ];
 
-// The part of room.png (in its pixels) to show in a box of the given aspect ratio.
-// The painting's full width is always shown, so the room stays centred on the desk
-// the way it was composed. A box taller than the painting, as on a phone, gains
-// wall above and floor below, reaching past the picture's top and bottom edges.
-export function frameFor(aspect) {
-  const full = IMG_W / IMG_H;
+// The part of room.png (in its pixels) to show in a box of the given CSS size.
+// At the painting's own shape that is the whole picture, and a taller box gains
+// wall above and floor below. On a phone-width box the view also zooms in so the
+// three clickable objects are big enough to tap: it drops the bed and poster on
+// the left, where nothing is clickable, and keeps everything from the desk lamp
+// across (lamp, tablet, laptop, portrait, bass). The result can reach past the
+// picture's top and bottom edges.
+const PHONE_KEEP = 0.765; // share of the painting's width kept on phones, measured from the right
+export function frameFor(width, height) {
+  const aspect = width / height, full = IMG_W / IMG_H;
   if (!(aspect > 0) || aspect >= full - 0.005) return { x: 0, y: 0, w: IMG_W, h: IMG_H };
+  const cropW = PHONE_KEEP * IMG_W, cropH = cropW / aspect;
+  // Only crop when the box is tall enough that the crop still shows most of the height.
+  if (width <= 640 && cropH >= 0.8 * IMG_H) {
+    // Sit the view just under the furniture, so spare height shows wall, not floor.
+    return { x: IMG_W - cropW, y: 0.95 * IMG_H - cropH, w: cropW, h: cropH };
+  }
   const h = IMG_W / aspect;
   // The furniture sits a touch below the picture's middle; follow it as the view grows.
   const cy = (0.5 + 0.015 * Math.min(1, (h - IMG_H) / (0.15 * IMG_H))) * IMG_H;
@@ -256,7 +266,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     cam.position.set(CAM_POS.x + cx * 0.07, CAM_POS.y + cy * 0.035, CAM_POS.z);
     cam.lookAt(pivot);
     cam.updateMatrixWorld();
-    const view = frameFor(w / h);
+    const view = frameFor(w, h);
     viewCam.position.copy(cam.position);
     viewCam.quaternion.copy(cam.quaternion);
     viewCam.setViewOffset(IMG_W, IMG_H, view.x, view.y, view.w, view.h);
