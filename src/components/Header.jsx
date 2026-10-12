@@ -4,6 +4,7 @@ const LINKEDIN_HREF = 'https://www.linkedin.com/in/shiyan-gunasegaram/';
 export default function Header() {
   return (
     <header
+      data-header=""
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 40,
         display: 'flex', flexWrap: 'wrap', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px 16px',
@@ -12,8 +13,9 @@ export default function Header() {
         backdropFilter: 'blur(12px) saturate(150%)', WebkitBackdropFilter: 'blur(12px) saturate(150%)'
       }}
     >
-      <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none' }}>
+      <a href="#" data-brand="" style={{ display: 'flex', alignItems: 'center', gap: 14, textDecoration: 'none' }}>
         <span
+          data-logo=""
           style={{
             display: 'grid', placeItems: 'center', width: 44, height: 44,
             border: '1px solid rgba(247,240,240,.16)', borderRadius: 2,
@@ -25,7 +27,7 @@ export default function Header() {
           S
         </span>
         <span style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-          <span style={{ fontSize: 11.5, letterSpacing: '.2em', textTransform: 'uppercase', color: '#F7F0F0' }}>
+          <span data-brandname="" style={{ fontSize: 11.5, letterSpacing: '.2em', textTransform: 'uppercase', color: '#F7F0F0' }}>
             Shiyan Gunasegaram
           </span>
           <span data-navsub="" style={{ fontSize: 10, letterSpacing: '.16em', textTransform: 'uppercase', color: '#84828F' }}>
@@ -33,30 +35,32 @@ export default function Header() {
           </span>
         </span>
       </a>
-      <nav style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4, marginLeft: 'auto' }}>
+      <nav data-nav="" style={{ display: 'flex', alignItems: 'center', gap: 8, paddingTop: 4, marginLeft: 'auto' }}>
         <a
           href={EMAIL_HREF}
           target="_blank"
           rel="noopener noreferrer"
+          data-navlink=""
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px',
             border: '1px solid rgba(247,240,240,.14)', borderRadius: 999, fontSize: 10.5,
             letterSpacing: '.16em', textTransform: 'uppercase', background: 'rgba(247,240,240,.03)'
           }}
         >
-          Email <span style={{ color: '#84828F' }}>↗</span>
+          Email <span data-navarrow="" style={{ color: '#84828F' }}>↗</span>
         </a>
         <a
           href={LINKEDIN_HREF}
           target="_blank"
           rel="noopener noreferrer"
+          data-navlink=""
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 7, padding: '9px 14px',
             border: '1px solid rgba(247,240,240,.14)', borderRadius: 999, fontSize: 10.5,
             letterSpacing: '.16em', textTransform: 'uppercase', background: 'rgba(247,240,240,.03)'
           }}
         >
-          LinkedIn <span style={{ color: '#84828F' }}>↗</span>
+          LinkedIn <span data-navarrow="" style={{ color: '#84828F' }}>↗</span>
         </a>
       </nav>
     </header>

@@ -7,7 +7,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 // stay exactly as drawn. Everything is laid out against a reference camera that
 // matches the painting's viewpoint.
 
-const IMG_W = 1537, IMG_H = 1023;
+export const IMG_W = 1537, IMG_H = 1023;
 const FLOOR_Y = -0.277, BACK_Z = -0.38, FRONT_Z = 1.15, CEIL_Y = 0.95;
 const CAM_POS = new THREE.Vector3(0, 0.13, 0.92);
 const CAM_PITCH = 6 * Math.PI / 180;
@@ -59,6 +59,8 @@ const WALLS = {
   right: { x0: 1352, x1: IMG_W, clean: 345 }
 };
 const WALL_ROWS = 830;
+// Rows of plain wall added above the picture, for views taller than the painting.
+const WALL_PAD = 420;
 
 // Polaroids that sit below the clean part of the right wall (TL, TR, BR, BL in room.png).
 const POLAROIDS_PX = [
@@ -66,26 +68,55 @@ const POLAROIDS_PX = [
   [[1485.5, 363.5], [1514.5, 361], [1514.5, 435], [1485.5, 437.5]]
 ];
 
+// The part of room.png (in its pixels) to show in a box of the given aspect ratio.
+// At the painting's own shape that is the whole picture. As the box gets taller,
+// as on a phone, the view first gains wall above and floor below, then narrows
+// onto the desk and the bass so the three clickable objects stay large. The
+// result can reach past the picture's top and bottom edges.
+export function frameFor(aspect) {
+  const full = IMG_W / IMG_H;
+  if (!(aspect > 0) || aspect >= full - 0.005) return { x: 0, y: 0, w: IMG_W, h: IMG_H };
+  const focusW = 0.8 * IMG_W, focusX = 0.585 * IMG_W;
+  const w = Math.min(IMG_W, Math.max(focusW, aspect * 1.2 * IMG_H));
+  const h = w / aspect;
+  const cx = focusX + (IMG_W / 2 - focusX) * ((w - focusW) / (IMG_W - focusW));
+  const cy = (0.5 + 0.02 * Math.min(1, (h - IMG_H) / (0.2 * IMG_H))) * IMG_H;
+  return { x: cx - w / 2, y: cy - h / 2, w, h };
+}
+
 function wallTexture(img, { x0, x1, clean }) {
   const w = x1 - x0;
   const cv = document.createElement('canvas');
   cv.width = w;
-  cv.height = WALL_ROWS;
+  cv.height = WALL_PAD + WALL_ROWS;
   const ctx = cv.getContext('2d');
-  ctx.drawImage(img, x0, 0, w, clean, 0, 0, w, clean);
-  // Average the last clean rows into a soft strip and stretch it down the wall.
-  const strip = document.createElement('canvas');
-  strip.width = Math.max(4, Math.round(w / 28));
-  strip.height = 1;
-  strip.getContext('2d').drawImage(img, x0, clean - 14, w, 14, 0, 0, strip.width, 1);
   ctx.imageSmoothingQuality = 'high';
-  ctx.drawImage(strip, 0, 0, strip.width, 1, 0, clean - 1, w, WALL_ROWS - clean + 1);
+  // Average a few rows into a soft strip that can be stretched along the wall.
+  const soft = (row) => {
+    const strip = document.createElement('canvas');
+    strip.width = Math.max(4, Math.round(w / 28));
+    strip.height = 1;
+    strip.getContext('2d').drawImage(img, x0, row, w, 14, 0, 0, strip.width, 1);
+    return strip;
+  };
+  const shade = (from, to, alpha) => {
+    const fade = ctx.createLinearGradient(0, from, 0, to);
+    fade.addColorStop(0, 'rgba(8,8,8,0)');
+    fade.addColorStop(1, `rgba(8,8,8,${alpha})`);
+    ctx.fillStyle = fade;
+    ctx.fillRect(0, Math.min(from, to), w, Math.abs(to - from));
+  };
+  // Above the picture: the wall carries on up from its top rows.
+  const top = soft(0);
+  ctx.drawImage(top, 0, 0, top.width, 1, 0, 0, w, WALL_PAD + 1);
+  shade(WALL_PAD, 0, 0.35);
+  ctx.translate(0, WALL_PAD);
+  ctx.drawImage(img, x0, 0, w, clean, 0, 0, w, clean);
+  // Below the clean rows: the same, down behind the furniture.
+  const low = soft(clean - 14);
+  ctx.drawImage(low, 0, 0, low.width, 1, 0, clean - 1, w, WALL_ROWS - clean + 1);
   ctx.drawImage(img, x0, clean - 26, w, 26, 0, clean - 26, w, 26);
-  const fade = ctx.createLinearGradient(0, clean, 0, WALL_ROWS);
-  fade.addColorStop(0, 'rgba(8,8,8,0)');
-  fade.addColorStop(1, 'rgba(8,8,8,.5)');
-  ctx.fillStyle = fade;
-  ctx.fillRect(0, clean, w, WALL_ROWS - clean);
+  shade(clean, WALL_ROWS, 0.5);
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
@@ -132,7 +163,10 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   refCam.position.copy(CAM_POS);
   refCam.lookAt(target);
   refCam.updateMatrixWorld();
+  // `cam` sees the whole painting and is what the hotspots are measured against;
+  // `viewCam` follows it but renders only the part that fits the canvas's shape.
   const cam = refCam.clone();
+  const viewCam = refCam.clone();
   // Parallax orbits around a point inside the room rather than the far target.
   const pivot = CAM_POS.clone().lerp(target, 0.95);
 
@@ -181,7 +215,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   };
   const projected = (x0, w, rows) => (p) => {
     const [px, py] = toPx(p);
-    return [(px - x0) / w, 1 - py / rows];
+    return [(px - x0) / w, 1 - (py + WALL_PAD) / (WALL_PAD + rows)];
   };
 
   const disposables = [];
@@ -225,7 +259,12 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     cam.position.set(CAM_POS.x + cx * 0.07, CAM_POS.y + cy * 0.035, CAM_POS.z);
     cam.lookAt(pivot);
     cam.updateMatrixWorld();
-    renderer.render(scene, cam);
+    const view = frameFor(w / h);
+    viewCam.position.copy(cam.position);
+    viewCam.quaternion.copy(cam.quaternion);
+    viewCam.setViewOffset(IMG_W, IMG_H, view.x, view.y, view.w, view.h);
+    viewCam.updateMatrixWorld();
+    renderer.render(scene, viewCam);
     layout();
   };
 

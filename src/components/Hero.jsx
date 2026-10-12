@@ -1,6 +1,8 @@
-import { forwardRef, useEffect, useRef } from 'react';
+import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { mountRoom } from '../lib/roomScene.js';
+import { IMG_W, IMG_H, frameFor, mountRoom } from '../lib/roomScene.js';
+
+const frameStyle = { position: 'absolute', left: 0, top: 0, width: '100%', aspectRatio: `${IMG_W}/${IMG_H}` };
 
 const hotspots = [
   {
@@ -37,9 +39,26 @@ const plateStyle = {
 
 const Hero = forwardRef(function Hero({ onOpen }, ref) {
   const roomRef = useRef(null);
+  const frameRefs = useRef([]);
   const canvasRef = useRef(null);
   const hotRefs = useRef([]);
   const asideRef = useRef(null);
+
+  // Keep the painting framed for the room box's current shape (see frameFor).
+  useLayoutEffect(() => {
+    const room = roomRef.current;
+    const fit = () => {
+      const w = room.clientWidth, h = room.clientHeight;
+      if (!w || !h) return;
+      const r = frameFor(w / h);
+      const style = { width: `${(IMG_W / r.w) * 100}%`, left: `${(-r.x / r.w) * 100}%`, top: `${(-r.y / r.h) * 100}%` };
+      frameRefs.current.forEach((el) => el && Object.assign(el.style, style));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(room);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -123,14 +142,18 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         data-room=""
         style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate3d(-50%,-50%,0)',
-          width: '106vw', aspectRatio: '1537/1023', willChange: 'transform'
+          width: '106vw', aspectRatio: `${IMG_W}/${IMG_H}`, willChange: 'transform', overflow: 'hidden'
         }}
       >
-        <img
-          src="/assets/room.png"
-          alt="A dark bedroom studio: desk with laptop, iPad, framed portrait, and a bass guitar."
-          style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.82) contrast(1.04) brightness(.96)' }}
-        />
+        {/* The two frames are the whole painting, placed so the part chosen for this
+            box's shape fills it: one holds the flat image, the other the hotspots. */}
+        <div ref={(el) => (frameRefs.current[0] = el)} style={frameStyle}>
+          <img
+            src="/assets/room.png"
+            alt="A dark bedroom studio: desk with laptop, iPad, framed portrait, and a bass guitar."
+            style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.82) contrast(1.04) brightness(.96)' }}
+          />
+        </div>
         <canvas
           ref={canvasRef}
           aria-hidden="true"
@@ -139,37 +162,39 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(78% 62% at 52% 48%,rgba(11,13,12,0) 34%,rgba(11,13,12,.62) 100%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(11,13,12,.78) 0%,rgba(11,13,12,0) 26%,rgba(11,13,12,0) 62%,rgba(11,13,12,.86) 100%)', pointerEvents: 'none' }} />
 
-        {hotspots.map((h, i) => (
-          <button
-            key={h.key}
-            ref={(el) => (hotRefs.current[i] = el)}
-            data-hot=""
-            aria-label={h.ariaLabel}
-            onClick={(e) => onOpen(h.key, e)}
-            style={{ position: 'absolute', ...h.rect, cursor: 'pointer', background: 'none', border: 0 }}
-          >
-            <span
-              data-ring=""
-              style={{
-                position: 'absolute', inset: -3, borderRadius: h.ringRadius, opacity: 0.42,
-                boxShadow: '0 0 0 1px rgba(224,166,190,.2),0 0 26px 4px rgba(142,6,64,.26)',
-                transition: 'box-shadow .45s cubic-bezier(.22,1,.36,1),opacity .45s'
-              }}
-            />
-            <span
-              data-plate={h.plate}
-              style={{
-                position: 'absolute', width: 'max-content', maxWidth: 230, opacity: 0, pointerEvents: 'none',
-                transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)',
-                ...plateStyle[h.plate]
-              }}
+        <div ref={(el) => (frameRefs.current[1] = el)} style={{ ...frameStyle, pointerEvents: 'none' }}>
+          {hotspots.map((h, i) => (
+            <button
+              key={h.key}
+              ref={(el) => (hotRefs.current[i] = el)}
+              data-hot=""
+              aria-label={h.ariaLabel}
+              onClick={(e) => onOpen(h.key, e)}
+              style={{ position: 'absolute', ...h.rect, cursor: 'pointer', background: 'none', border: 0, pointerEvents: 'auto' }}
             >
-              <span style={{ display: 'block', fontFamily: "'Bodoni Moda',serif", fontSize: 30, lineHeight: 1, letterSpacing: '-.02em', color: '#F7F0F0' }}>
-                {h.label}
+              <span
+                data-ring=""
+                style={{
+                  position: 'absolute', inset: -3, borderRadius: h.ringRadius, opacity: 0.42,
+                  boxShadow: '0 0 0 1px rgba(224,166,190,.2),0 0 26px 4px rgba(142,6,64,.26)',
+                  transition: 'box-shadow .45s cubic-bezier(.22,1,.36,1),opacity .45s'
+                }}
+              />
+              <span
+                data-plate={h.plate}
+                style={{
+                  position: 'absolute', width: 'max-content', maxWidth: 230, opacity: 0, pointerEvents: 'none',
+                  transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .5s cubic-bezier(.22,1,.36,1)',
+                  ...plateStyle[h.plate]
+                }}
+              >
+                <span style={{ display: 'block', fontFamily: "'Bodoni Moda',serif", fontSize: 30, lineHeight: 1, letterSpacing: '-.02em', color: '#F7F0F0' }}>
+                  {h.label}
+                </span>
               </span>
-            </span>
-          </button>
-        ))}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div
@@ -180,7 +205,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
           display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 'min(330px,38vw)', pointerEvents: 'none'
         }}
       >
-        <p style={{ margin: 0, fontFamily: "'Bodoni Moda',serif", fontSize: 'clamp(21px,1.9vw,29px)', lineHeight: 1.22, letterSpacing: '-.015em', color: '#F7F0F0', textWrap: 'pretty' }}>
+        <p data-herotitle="" style={{ margin: 0, fontFamily: "'Bodoni Moda',serif", fontSize: 'clamp(21px,1.9vw,29px)', lineHeight: 1.22, letterSpacing: '-.015em', color: '#F7F0F0', textWrap: 'pretty' }}>
           Aspiring product manager building at the seam of <em style={{ fontStyle: 'italic', color: '#E0A6BE' }}>sound</em> and software.
         </p>
         <span
@@ -212,10 +237,11 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         ].map((it) => (
           <button
             key={it.key}
+            data-indexbtn=""
             onClick={(e) => onOpen(it.key, e)}
             style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12, padding: '20px 18px', background: '#0B0D0C', textAlign: 'left', minHeight: 64 }}
           >
-            <span style={{ fontFamily: "'Bodoni Moda',serif", fontSize: 26, letterSpacing: '-.02em' }}>{it.label}</span>
+            <span data-indexlabel="" style={{ fontFamily: "'Bodoni Moda',serif", fontSize: 26, letterSpacing: '-.02em' }}>{it.label}</span>
             <span style={{ fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F' }}>{it.n}</span>
           </button>
         ))}
@@ -229,7 +255,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
 export default Hero;
 
 function MarqueeBar() {
-  const words = ['Product Management', 'Music Technology', 'Sound Design', 'Cognitive Systems', 'Creative Code', 'Film · Music · Games'];
+  const words = ['Product Management', 'Music Technology', 'Sound Design', 'Cognitive Systems', 'Film · Music · Games'];
   const strip = (
     <span style={{ display: 'flex', alignItems: 'center', gap: 34, padding: '11px 17px', fontFamily: "'Bodoni Moda',serif", fontSize: 13.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F', whiteSpace: 'nowrap' }}>
       {words.map((w) => (

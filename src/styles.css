@@ -43,12 +43,28 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
   [data-workimg] { order: -1; }
 }
 
+/* Header height, and the height of everything under the room on the first screen
+   (headline, page links, marquee). The stacked layout sizes the room from these. */
+:root { --header-h: 84px; --hero-rest: 390px; }
+@media (max-width: 640px) {
+  :root { --header-h: 56px; --hero-rest: 236px; }
+}
+
 @media (max-aspect-ratio: 3/2) {
   html, body, #root { height: auto !important; overflow: auto !important; }
   [data-root] { height: auto !important; min-height: 0 !important; overflow: visible !important; }
-  [data-stage] { position: relative !important; height: auto !important; }
+  [data-stage] { position: relative !important; height: auto !important; padding-top: var(--header-h) !important; }
   [data-marqueebar] { position: static !important; }
-  [data-room] { position: relative !important; top: auto !important; left: auto !important; width: 100vw !important; transform: none !important; }
+  /* The room starts below the header and takes the height the first screen has left,
+     from the painting's own shape (66.56vw tall) up to a tall phone shape. */
+  [data-room] {
+    position: relative !important; top: auto !important; left: auto !important; width: 100% !important; transform: none !important;
+    aspect-ratio: auto !important;
+    height: clamp(66.56vw, calc(100vh - var(--header-h) - var(--hero-rest)), 120vw) !important;
+  }
+  @supports (height: 100svh) {
+    [data-room] { height: clamp(66.56vw, calc(100svh - var(--header-h) - var(--hero-rest)), 120vw) !important; }
+  }
   [data-heroaside] { position: static !important; max-width: 46ch !important; padding: clamp(26px,4vw,48px) clamp(18px,3.2vw,44px) clamp(20px,3vw,34px) !important; }
   [data-mobileindex] { display: grid !important; }
   [data-panelhead] { padding-top: 82px !important; }
@@ -56,6 +72,29 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 
 @media (max-width: 640px) {
   [data-navsub] { display: none !important; }
+  [data-header] { flex-wrap: nowrap !important; align-items: center !important; gap: 10px !important; padding: 11px 14px !important; }
+  [data-brand] { gap: 10px !important; min-width: 0; }
+  [data-logo] { flex: none; width: 34px !important; height: 34px !important; font-size: 23px !important; padding-bottom: 2px !important; }
+  [data-brandname] { font-size: 10px !important; letter-spacing: .14em !important; line-height: 1.4; }
+  [data-nav] { flex: none; gap: 6px !important; padding-top: 0 !important; }
+  [data-navlink] { padding: 10px 11px !important; font-size: 9.5px !important; letter-spacing: .12em !important; }
+  [data-navarrow] { display: none; }
+}
+
+/* Phones: the three page links share one row so the room gets the space. */
+@media (max-width: 640px) and (max-aspect-ratio: 3/2) {
+  [data-heroaside] { gap: 10px !important; padding: 16px 16px 14px !important; }
+  [data-mobileindex] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  [data-indexbtn] { flex-direction: column-reverse !important; align-items: flex-start !important; justify-content: flex-end !important; gap: 6px !important; padding: 12px 12px 13px !important; min-height: 80px !important; }
+  [data-indexlabel] { font-size: 17px !important; line-height: 1.12; }
+}
+@media (max-width: 380px) and (max-aspect-ratio: 3/2) {
+  [data-herotitle] { font-size: 19px !important; }
+}
+
+/* Touch: a little slack around each object, since they are small on a phone. */
+@media (pointer: coarse) {
+  [data-hot]::after { content: ''; position: absolute; inset: -6px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
