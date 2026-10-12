@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useRef } from 'react';
 import gsap from 'gsap';
+import { mountRoom } from '../lib/roomScene.js';
 
 const hotspots = [
   {
@@ -36,6 +37,7 @@ const plateStyle = {
 
 const Hero = forwardRef(function Hero({ onOpen }, ref) {
   const roomRef = useRef(null);
+  const canvasRef = useRef(null);
   const hotRefs = useRef([]);
   const asideRef = useRef(null);
 
@@ -55,23 +57,59 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     }
 
     const room = roomRef.current;
-    if (!room || reduce || matchMedia('(max-aspect-ratio: 3/2)').matches) return;
+    const canvas = canvasRef.current;
+    if (!room || !canvas) return;
+
+    // Phones and low-power devices get the small model at a capped resolution,
+    // drawn once; the camera only follows the pointer on larger screens.
+    const stacked = matchMedia('(max-aspect-ratio: 3/2)').matches;
+    const lite = stacked || matchMedia('(pointer: coarse)').matches || (navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
+    const still = reduce || stacked || matchMedia('(pointer: coarse)').matches;
+
+    // Until the 3D room is up (or if it can't run), the flat image drifts instead.
+    let live = false, scene = null;
     let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
     const onMove = (e) => {
-      tx = (e.clientX / innerWidth - 0.5) * -26;
-      ty = (e.clientY / innerHeight - 0.5) * -16;
+      const nx = e.clientX / innerWidth - 0.5, ny = e.clientY / innerHeight - 0.5;
+      if (live) {
+        scene.setPointer(nx * 2, ny * -2);
+        return;
+      }
+      tx = nx * -26;
+      ty = ny * -16;
       if (!raf) raf = requestAnimationFrame(tick);
     };
     const tick = () => {
       cx += (tx - cx) * 0.075;
       cy += (ty - cy) * 0.075;
       room.style.transform = `translate3d(calc(-50% + ${cx.toFixed(2)}px), calc(-50% + ${cy.toFixed(2)}px), 0) scale(1.015)`;
-      raf = Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05 ? requestAnimationFrame(tick) : 0;
+      raf = !live && (Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05) ? requestAnimationFrame(tick) : 0;
     };
-    addEventListener('pointermove', onMove, { passive: true });
+    const flat = () => {
+      live = false;
+      canvas.style.opacity = 0;
+      hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, h.rect));
+    };
+
+    if (!navigator.connection?.saveData) {
+      scene = mountRoom(canvas, {
+        lite,
+        onReady: () => {
+          live = true;
+          cancelAnimationFrame(raf);
+          raf = 0;
+          room.style.transform = 'translate3d(-50%,-50%,0)';
+          canvas.style.opacity = 1;
+        },
+        onLayout: (rects) => hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, rects[h.key])),
+        onFail: flat
+      });
+    }
+    if (!still) addEventListener('pointermove', onMove, { passive: true });
     return () => {
       removeEventListener('pointermove', onMove);
       cancelAnimationFrame(raf);
+      scene?.destroy();
     };
   }, []);
 
@@ -89,6 +127,11 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
           src="/assets/room.png"
           alt="A dark bedroom studio: desk with laptop, iPad, framed portrait, and a bass guitar."
           style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.82) contrast(1.04) brightness(.96)' }}
+        />
+        <canvas
+          ref={canvasRef}
+          aria-hidden="true"
+          style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, transition: 'opacity .9s ease', filter: 'saturate(.82) contrast(1.04) brightness(.96)' }}
         />
         <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(78% 62% at 52% 48%,rgba(11,13,12,0) 34%,rgba(11,13,12,.62) 100%)', pointerEvents: 'none' }} />
         <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(11,13,12,.78) 0%,rgba(11,13,12,0) 26%,rgba(11,13,12,0) 62%,rgba(11,13,12,.86) 100%)', pointerEvents: 'none' }} />
