@@ -50,7 +50,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const fit = () => {
       const w = room.clientWidth, h = room.clientHeight;
       if (!w || !h) return;
-      const r = frameFor(w / h);
+      const r = frameFor(w, h);
       const style = { width: `${(IMG_W / r.w) * 100}%`, left: `${(-r.x / r.w) * 100}%`, top: `${(-r.y / r.h) * 100}%` };
       frameRefs.current.forEach((el) => el && Object.assign(el.style, style));
     };
@@ -261,7 +261,10 @@ function MarqueeBar() {
       {words.map((w) => (
         <span key={w} style={{ display: 'contents' }}>
           {w}
-          <span style={{ color: '#8E0640' }}>✳</span>
+          {/* Drawn rather than typed: iOS shows the ✳ character as a green emoji. */}
+          <svg aria-hidden="true" viewBox="0 0 16 16" width="11" height="11" style={{ flex: 'none', color: '#8E0640' }}>
+            <path d="M8 1.5v13M1.5 8h13M3.4 3.4l9.2 9.2M12.6 3.4l-9.2 9.2" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
+          </svg>
         </span>
       ))}
     </span>

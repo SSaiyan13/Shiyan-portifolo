@@ -47,7 +47,7 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
    (headline, page links, marquee). The stacked layout sizes the room from these. */
 :root { --header-h: 84px; --hero-rest: 390px; }
 @media (max-width: 640px) {
-  :root { --header-h: 56px; --hero-rest: 236px; }
+  :root { --header-h: 56px; }
 }
 
 @media (max-aspect-ratio: 3/2) {
@@ -85,12 +85,21 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
   [data-navarrow] { display: none; }
 }
 
-/* Phones: the three page links share one row so the room gets the space. */
+/* Phones: the first screen is filled exactly. The room takes whatever height the
+   header, headline, page links and marquee leave, so the marquee sits at the bottom
+   of the screen with no empty band under it, and the three page links share one row. */
 @media (max-width: 640px) and (max-aspect-ratio: 3/2) {
+  [data-stage] { display: flex !important; flex-direction: column !important; min-height: 100vh !important; }
+  [data-room] { flex: 1 1 auto !important; height: auto !important; min-height: 66.56vw !important; }
   [data-heroaside] { gap: 10px !important; padding: 16px 16px 14px !important; }
   [data-mobileindex] { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
   [data-indexbtn] { flex-direction: column-reverse !important; align-items: flex-start !important; justify-content: flex-end !important; gap: 6px !important; padding: 12px 12px 13px !important; min-height: 80px !important; }
   [data-indexlabel] { font-size: 17px !important; line-height: 1.12; }
+}
+@supports (height: 100svh) {
+  @media (max-width: 640px) and (max-aspect-ratio: 3/2) {
+    [data-stage] { min-height: 100svh !important; }
+  }
 }
 @media (max-width: 380px) and (max-aspect-ratio: 3/2) {
   [data-herotitle] { font-size: 19px !important; }
