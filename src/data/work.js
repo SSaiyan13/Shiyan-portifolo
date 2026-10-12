@@ -10,13 +10,13 @@ export const workProjects = [
     imageFirst: true
   },
   {
-    title: 'Jotly',
-    context: 'Hackathon · 1st place overall',
+    title: 'Jolty',
+    context: 'Hackathon · Produchackathon · 1st place overall',
     subtitle: 'An app to build your creative muscle.',
     href: 'https://devpost.com/software/jotly',
     linkLabel: 'Devpost',
     image: '/assets/work-jolty.png',
-    alt: 'Jotly solution slide showing the app onboarding screen',
+    alt: 'Jolty solution slide showing the app onboarding screen',
     imageFirst: false
   },
   {
@@ -31,7 +31,7 @@ export const workProjects = [
   },
   {
     title: 'Sodelic',
-    context: 'Career',
+    context: 'Career · UX/UI Intern',
     subtitle: 'Simplifies project scope and keeps teams aligned from start to delivery.',
     href: 'https://www.sodelic.com/',
     linkLabel: 'sodelic.com',
