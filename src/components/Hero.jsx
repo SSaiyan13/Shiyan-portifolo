@@ -43,6 +43,10 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
   const canvasRef = useRef(null);
   const hotRefs = useRef([]);
   const asideRef = useRef(null);
+  // Whether the 3D scene is showing with its bass moved beside the desk (phones);
+  // the framing differs from the flat painting's, where the bass can't move.
+  const bassMovesRef = useRef(false);
+  const fitRef = useRef(() => {});
 
   // Keep the painting framed for the room box's current shape (see frameFor).
   useLayoutEffect(() => {
@@ -50,10 +54,11 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const fit = () => {
       const w = room.clientWidth, h = room.clientHeight;
       if (!w || !h) return;
-      const r = frameFor(w, h);
+      const r = frameFor(w, h, bassMovesRef.current);
       const style = { width: `${(IMG_W / r.w) * 100}%`, left: `${(-r.x / r.w) * 100}%`, top: `${(-r.y / r.h) * 100}%` };
       frameRefs.current.forEach((el) => el && Object.assign(el.style, style));
     };
+    fitRef.current = fit;
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(room);
@@ -109,6 +114,8 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     };
     const flat = () => {
       live = false;
+      bassMovesRef.current = false;
+      fitRef.current();
       canvas.style.opacity = 0;
       hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, h.rect));
     };
@@ -116,8 +123,10 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     if (!navigator.connection?.saveData) {
       scene = mountRoom(canvas, {
         lite,
-        onReady: () => {
+        onReady: (bassCanMove) => {
           live = true;
+          bassMovesRef.current = bassCanMove;
+          fitRef.current();
           cancelAnimationFrame(raf);
           raf = 0;
           room.style.transform = 'translate3d(-50%,-50%,0)';

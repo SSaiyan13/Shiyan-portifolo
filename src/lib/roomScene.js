@@ -68,27 +68,36 @@ const POLAROIDS_PX = [
   [[1485.5, 363.5], [1514.5, 361], [1514.5, 435], [1485.5, 437.5]]
 ];
 
+// On phones the 3D bass stands beside the desk instead of by the right wall, so
+// the view can crop tighter and the three clickable objects get bigger. This is
+// how far it moves, in model units (left, and a little forward to clear the desk).
+const BASS_MOVE = [-0.122, 0, 0.05];
+
 // The part of room.png (in its pixels) to show in a box of the given CSS size.
 // At the painting's own shape that is the whole picture, and a taller box gains
-// wall above and floor below. On a phone-width box the view also zooms in so the
-// three clickable objects are big enough to tap: it drops the bed and poster on
-// the left, where nothing is clickable, and keeps everything from the desk lamp
-// across (lamp, tablet, laptop, portrait, bass). The result can reach past the
-// picture's top and bottom edges.
-const PHONE_KEEP = 0.765; // share of the painting's width kept on phones, measured from the right
-export function frameFor(width, height) {
+// wall above and floor below. A phone-width box zooms in instead, so the three
+// clickable objects are big enough to tap. With the bass moved (the live 3D
+// scene) it shows the lamp head to the bass; with the flat painting, where the
+// bass is still by the wall, it shows the lamp to the right edge. Either way the
+// bed and poster on the left are dropped, since nothing there is clickable. The
+// result can reach past the picture's top and bottom edges, and reports `moved`
+// when the bass should stand beside the desk.
+const PHONE_CROP = { moved: [0.25, 0.875], flat: [0.235, 1] }; // left and right edges, as shares of the width
+export function frameFor(width, height, bassCanMove = false) {
   const aspect = width / height, full = IMG_W / IMG_H;
-  if (!(aspect > 0) || aspect >= full - 0.005) return { x: 0, y: 0, w: IMG_W, h: IMG_H };
-  const cropW = PHONE_KEEP * IMG_W, cropH = cropW / aspect;
-  // Only crop when the box is tall enough that the crop still shows most of the height.
-  if (width <= 640 && cropH >= 0.8 * IMG_H) {
-    // Sit the view just under the furniture, so spare height shows wall, not floor.
-    return { x: IMG_W - cropW, y: 0.95 * IMG_H - cropH, w: cropW, h: cropH };
+  if (!(aspect > 0) || aspect >= full - 0.005) return { x: 0, y: 0, w: IMG_W, h: IMG_H, moved: false };
+  if (width <= 640) {
+    const [left, right] = bassCanMove ? PHONE_CROP.moved : PHONE_CROP.flat;
+    const w = (right - left) * IMG_W, h = w / aspect;
+    // A tall view sits just under the furniture, so spare height shows wall, not
+    // floor; a short one centres on the band the clickable objects are in.
+    const y = Math.min(0.95 * IMG_H - h, 0.59 * IMG_H - h / 2);
+    return { x: left * IMG_W, y, w, h, moved: bassCanMove };
   }
   const h = IMG_W / aspect;
   // The furniture sits a touch below the picture's middle; follow it as the view grows.
   const cy = (0.5 + 0.015 * Math.min(1, (h - IMG_H) / (0.15 * IMG_H))) * IMG_H;
-  return { x: 0, y: cy - h / 2, w: IMG_W, h };
+  return { x: 0, y: cy - h / 2, w: IMG_W, h, moved: false };
 }
 
 function wallTexture(img, { x0, x1, clean }) {
@@ -239,14 +248,18 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
 
   let destroyed = false, raf = 0, ready = false;
   let tx = 0, ty = 0, cx = 0, cy = 0;
+  // The bass and where the model file put it; `bassMoved` is whether it currently stands by the desk.
+  let bass = null, bassMoved = false;
+  const bassHome = new THREE.Vector3();
 
   const layout = () => {
     if (!onLayout) return;
     const rects = {};
     for (const [key, b] of Object.entries(HOT_BOXES)) {
+      const move = key === 'music' && bassMoved ? BASS_MOVE : [0, 0, 0];
       let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
       for (let i = 0; i < 8; i++) {
-        v.set(b[i & 1 ? 3 : 0], b[i & 2 ? 4 : 1], b[i & 4 ? 5 : 2]).project(cam);
+        v.set(b[i & 1 ? 3 : 0] + move[0], b[i & 2 ? 4 : 1] + move[1], b[i & 4 ? 5 : 2] + move[2]).project(cam);
         const x = (v.x + 1) / 2, y = (1 - v.y) / 2;
         x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
       }
@@ -266,7 +279,12 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     cam.position.set(CAM_POS.x + cx * 0.07, CAM_POS.y + cy * 0.035, CAM_POS.z);
     cam.lookAt(pivot);
     cam.updateMatrixWorld();
-    const view = frameFor(w, h);
+    const view = frameFor(w, h, !!bass);
+    if (bass && view.moved !== bassMoved) {
+      bassMoved = view.moved;
+      bass.position.copy(bassHome);
+      if (bassMoved) bass.position.add(v.set(...BASS_MOVE));
+    }
     viewCam.position.copy(cam.position);
     viewCam.quaternion.copy(cam.quaternion);
     viewCam.setViewOffset(IMG_W, IMG_H, view.x, view.y, view.w, view.h);
@@ -387,6 +405,8 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
       }
     });
     scene.add(gltf.scene);
+    bass = gltf.scene.getObjectByName('bass') || null;
+    if (bass) bassHome.copy(bass.position);
 
     scene.add(new THREE.HemisphereLight(LIGHTS.sky, LIGHTS.ground, LIGHTS.ambient));
     for (const [color, intensity, decay, x, y, z] of LIGHTS.points) {
@@ -400,7 +420,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
 
     ready = true;
     draw();
-    onReady?.();
+    onReady?.(!!bass);
   }).catch(fail);
 
   const onLost = (e) => {
