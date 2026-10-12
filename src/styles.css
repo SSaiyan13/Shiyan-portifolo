@@ -56,15 +56,19 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
   [data-stage] { position: relative !important; height: auto !important; padding-top: var(--header-h) !important; }
   [data-marqueebar] { position: static !important; }
   /* The room starts below the header and takes the height the first screen has left,
-     from the painting's own shape (66.56vw tall) up to a tall phone shape. */
+     from the painting's own shape (66.56vw tall) to a little taller than it. The
+     whole room always shows; extra height becomes wall above and floor below. */
   [data-room] {
     position: relative !important; top: auto !important; left: auto !important; width: 100% !important; transform: none !important;
     aspect-ratio: auto !important;
-    height: clamp(66.56vw, calc(100vh - var(--header-h) - var(--hero-rest)), 120vw) !important;
+    height: clamp(66.56vw, calc(100vh - var(--header-h) - var(--hero-rest)), 80vw) !important;
   }
   @supports (height: 100svh) {
-    [data-room] { height: clamp(66.56vw, calc(100svh - var(--header-h) - var(--hero-rest)), 120vw) !important; }
+    [data-room] { height: clamp(66.56vw, calc(100svh - var(--header-h) - var(--hero-rest)), 80vw) !important; }
   }
+  /* Nothing sits over the room here, so its edges are shaded far less than on desktop. */
+  [data-vignette="round"] { background: radial-gradient(92% 78% at 50% 50%,rgba(11,13,12,0) 48%,rgba(11,13,12,.5) 100%) !important; }
+  [data-vignette="ends"] { background: linear-gradient(180deg,rgba(11,13,12,.4) 0%,rgba(11,13,12,0) 16%,rgba(11,13,12,0) 80%,rgba(11,13,12,.75) 100%) !important; }
   [data-heroaside] { position: static !important; max-width: 46ch !important; padding: clamp(26px,4vw,48px) clamp(18px,3.2vw,44px) clamp(20px,3vw,34px) !important; }
   [data-mobileindex] { display: grid !important; }
   [data-panelhead] { padding-top: 82px !important; }

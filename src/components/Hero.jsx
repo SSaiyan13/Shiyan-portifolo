@@ -159,8 +159,8 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
           aria-hidden="true"
           style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', opacity: 0, transition: 'opacity .9s ease', filter: 'saturate(.82) contrast(1.04) brightness(.96)' }}
         />
-        <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(78% 62% at 52% 48%,rgba(11,13,12,0) 34%,rgba(11,13,12,.62) 100%)', pointerEvents: 'none' }} />
-        <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(11,13,12,.78) 0%,rgba(11,13,12,0) 26%,rgba(11,13,12,0) 62%,rgba(11,13,12,.86) 100%)', pointerEvents: 'none' }} />
+        <div data-vignette="round" style={{ position: 'absolute', inset: 0, background: 'radial-gradient(78% 62% at 52% 48%,rgba(11,13,12,0) 34%,rgba(11,13,12,.62) 100%)', pointerEvents: 'none' }} />
+        <div data-vignette="ends" style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(11,13,12,.78) 0%,rgba(11,13,12,0) 26%,rgba(11,13,12,0) 62%,rgba(11,13,12,.86) 100%)', pointerEvents: 'none' }} />
 
         <div ref={(el) => (frameRefs.current[1] = el)} style={{ ...frameStyle, pointerEvents: 'none' }}>
           {hotspots.map((h, i) => (

@@ -69,19 +69,16 @@ const POLAROIDS_PX = [
 ];
 
 // The part of room.png (in its pixels) to show in a box of the given aspect ratio.
-// At the painting's own shape that is the whole picture. As the box gets taller,
-// as on a phone, the view first gains wall above and floor below, then narrows
-// onto the desk and the bass so the three clickable objects stay large. The
-// result can reach past the picture's top and bottom edges.
+// The painting's full width is always shown, so the room stays centred on the desk
+// the way it was composed. A box taller than the painting, as on a phone, gains
+// wall above and floor below, reaching past the picture's top and bottom edges.
 export function frameFor(aspect) {
   const full = IMG_W / IMG_H;
   if (!(aspect > 0) || aspect >= full - 0.005) return { x: 0, y: 0, w: IMG_W, h: IMG_H };
-  const focusW = 0.8 * IMG_W, focusX = 0.585 * IMG_W;
-  const w = Math.min(IMG_W, Math.max(focusW, aspect * 1.2 * IMG_H));
-  const h = w / aspect;
-  const cx = focusX + (IMG_W / 2 - focusX) * ((w - focusW) / (IMG_W - focusW));
-  const cy = (0.5 + 0.02 * Math.min(1, (h - IMG_H) / (0.2 * IMG_H))) * IMG_H;
-  return { x: cx - w / 2, y: cy - h / 2, w, h };
+  const h = IMG_W / aspect;
+  // The furniture sits a touch below the picture's middle; follow it as the view grows.
+  const cy = (0.5 + 0.015 * Math.min(1, (h - IMG_H) / (0.15 * IMG_H))) * IMG_H;
+  return { x: 0, y: cy - h / 2, w: IMG_W, h };
 }
 
 function wallTexture(img, { x0, x1, clean }) {
