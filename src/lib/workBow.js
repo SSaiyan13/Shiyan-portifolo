@@ -1,6 +1,10 @@
 // workBow.js — one full-screen WebGL canvas that re-renders [data-bow] images in
 // place and bows their planes with scroll velocity. Layout is untouched: the real
 // <img> stays in flow (opacity 0 while bowing) and its rect drives the plane every frame.
+// The plane is drawn to look exactly like the resting image: same colours, and the
+// same CSS saturate/brightness filter if the image has one. An image inside a
+// [data-bow-card] has things drawn over it (a gradient, a label); the canvas would
+// hide those, so a copy of them is shown above the canvas while the image bows.
 const CFG = {
   curveK: 0.013,      // sqrt(px/s) -> local units
   maxCurve: 0.06,     // fraction of plane height
@@ -32,6 +36,8 @@ uniform float uRadius;
 uniform float uClipTop;
 uniform float uH;
 uniform float uOpacity;
+uniform float uSat;
+uniform float uBright;
 varying vec2 vUv;
 varying float vWorldY;
 void main(){
@@ -40,6 +46,7 @@ void main(){
   if (pa > uTexAspect) { float s = uTexAspect / pa; uv.y = (uv.y - 0.5) * s + 0.5; }
   else { float s = pa / uTexAspect; uv.x = (uv.x - 0.5) * s + 0.5; }
   vec4 c = texture2D(uTex, uv);
+  c.rgb = mix(vec3(dot(c.rgb, vec3(0.2126, 0.7152, 0.0722))), c.rgb, uSat) * uBright;
   vec2 q = (vUv - 0.5) * uSize;
   vec2 hs = uSize * 0.5 - vec2(uRadius);
   vec2 d = abs(q) - hs;
@@ -60,7 +67,7 @@ export function startWorkBow(THREE) {
   }
   if (reduce || !hasWebgl()) return { stop() {} };
 
-  let renderer, scene, camera, canvas, geom, loader;
+  let renderer, scene, camera, canvas, overlays, geom, loader;
   let items = [], W = 0, H = 0, raf = 0, tick = 0;
   let lastTop = null, lastT = 0, vel = 0, eased = 0;
   let disposed = false;
@@ -70,6 +77,9 @@ export function startWorkBow(THREE) {
     canvas.setAttribute('data-bowcanvas', '');
     canvas.style.cssText = 'position:fixed;inset:0;width:100%;height:100%;z-index:90;pointer-events:none';
     document.body.appendChild(canvas);
+    overlays = document.createElement('div');
+    overlays.style.cssText = 'position:fixed;inset:0;z-index:91;pointer-events:none;overflow:hidden';
+    document.body.appendChild(overlays);
     renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, premultipliedAlpha: false, preserveDrawingBuffer: true });
     renderer.setClearColor(0x000000, 0);
     if ('outputColorSpace' in renderer && THREE.SRGBColorSpace) renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -96,6 +106,7 @@ export function startWorkBow(THREE) {
     for (const el of els) {
       let it = items.find((i) => i.el === el);
       if (!it) it = add(el);
+      else if (it.src !== (el.currentSrc || el.src)) load(it); // the thumbnail fell back to another size
       seen.push(it);
     }
     for (let k = items.length - 1; k >= 0; k--) {
@@ -103,6 +114,7 @@ export function startWorkBow(THREE) {
         scene.remove(items[k].mesh);
         items[k].mesh.material.dispose();
         if (items[k].tex) items[k].tex.dispose();
+        items[k].over?.remove();
         items[k].el.style.opacity = '';
         items.splice(k, 1);
       }
@@ -119,7 +131,9 @@ export function startWorkBow(THREE) {
         uVelocity: { value: 0 },
         uClipTop: { value: 0 },
         uH: { value: H },
-        uOpacity: { value: 1 }
+        uOpacity: { value: 1 },
+        uSat: { value: 1 },
+        uBright: { value: 1 }
       },
       vertexShader: VERT,
       fragmentShader: FRAG,
@@ -131,20 +145,37 @@ export function startWorkBow(THREE) {
     mesh.frustumCulled = false;
     mesh.visible = false;
     scene.add(mesh);
-    const it = { el, mesh, tex: null, ready: false };
+    const it = { el, mesh, tex: null, ready: false, src: '', card: el.closest('[data-bow-card]'), over: null };
+    if (it.card) {
+      // Everything in the card except the image itself, to sit above the canvas.
+      it.over = it.card.cloneNode(true);
+      it.over.querySelectorAll('img').forEach((img) => img.remove());
+      for (const a of ['data-reveal', 'role', 'tabindex']) it.over.removeAttribute(a);
+      it.over.setAttribute('aria-hidden', 'true');
+      it.over.inert = true;
+      Object.assign(it.over.style, { position: 'absolute', margin: 0, display: 'none', background: 'none', borderColor: 'transparent', opacity: 1, transform: 'none' });
+      overlays.appendChild(it.over);
+    }
     items.push(it);
-    const src = el.currentSrc || el.src;
+    load(it);
+    return it;
+  }
+
+  function load(it) {
+    const src = it.el.currentSrc || it.el.src;
+    it.src = src;
     loader.load(src, (t) => {
-      if (THREE.SRGBColorSpace) t.colorSpace = THREE.SRGBColorSpace;
+      if (it.src !== src) { t.dispose(); return; }
+      // Left untagged so the shader passes the image's own colours straight through.
       t.minFilter = THREE.LinearFilter;
       t.generateMipmaps = false;
       t.needsUpdate = true;
+      it.tex?.dispose();
       it.tex = t;
-      mat.uniforms.uTex.value = t;
-      mat.uniforms.uTexAspect.value = (t.image.width || 1) / (t.image.height || 1);
+      it.mesh.material.uniforms.uTex.value = t;
+      it.mesh.material.uniforms.uTexAspect.value = (t.image.width || 1) / (t.image.height || 1);
       it.ready = true;
     });
-    return it;
   }
 
   function identity(el) {
@@ -187,14 +218,20 @@ export function startWorkBow(THREE) {
     }
 
     const moving = Math.abs(eased) > 0.0008;
+    overlays.style.clipPath = clipTop ? `inset(${clipTop}px 0 0 0)` : '';
 
     for (const it of items) {
       const m = it.mesh, u = m.material.uniforms;
-      const r = it.el.getBoundingClientRect();
+      const r = (it.card || it.el).getBoundingClientRect();
       const on = live && it.ready && r.width > 2 && r.height > 2 && r.bottom > -80 && r.top < H + 80;
       m.visible = on && moving;
       it.el.style.opacity = (on && moving) ? '0' : '';
+      if (it.over) it.over.style.display = m.visible ? '' : 'none';
       if (!m.visible) continue;
+      if (it.over) Object.assign(it.over.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
+      const filter = getComputedStyle(it.el).filter;
+      u.uSat.value = Number(/saturate\(([\d.]+)\)/.exec(filter)?.[1] ?? 1);
+      u.uBright.value = Number(/brightness\(([\d.]+)\)/.exec(filter)?.[1] ?? 1);
       m.scale.set(r.width, r.height, 1);
       m.position.x = r.left + r.width / 2 - W / 2;
       m.position.y = -(r.top + r.height / 2) + H / 2;
@@ -223,6 +260,7 @@ export function startWorkBow(THREE) {
       geom?.dispose();
       renderer?.dispose();
       canvas?.remove();
+      overlays?.remove();
       items = [];
     }
   };

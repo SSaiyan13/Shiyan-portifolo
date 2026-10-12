@@ -51,10 +51,11 @@ const LIGHTS = {
   fill: [0x9aa6bd, 2.8, 0.5, 0.9, 1.4]
 };
 
-// Wall regions of room.png. Rows above `clean` are unobstructed wall and are used
-// as-is; below that the furniture starts, so the wall colour is carried on down.
+// Wall regions of room.png. On the side walls, rows above `clean` are unobstructed
+// and are used as-is; below that the wall colour is carried on down. The back wall
+// is pieced together in more detail (see BACK_CLEAR).
 const WALLS = {
-  back: { x0: 233, x1: 1352, clean: 198 },
+  back: { x0: 233, x1: 1352 },
   left: { x0: 0, x1: 233, clean: 470 },
   right: { x0: 1352, x1: IMG_W, clean: 345 }
 };
@@ -98,6 +99,90 @@ export function frameFor(width, height, bassCanMove = false) {
   // The furniture sits a touch below the picture's middle; follow it as the view grows.
   const cy = (0.5 + 0.015 * Math.min(1, (h - IMG_H) / (0.15 * IMG_H))) * IMG_H;
   return { x: 0, y: cy - h / 2, w: IMG_W, h, moved: false };
+}
+
+// How far down room.png each stretch of the back wall is unobstructed, as
+// [fromX, toX, rows]: the lamp, laptop, portrait and so on start below these.
+const BACK_CLEAR = [
+  [233, 305, 480], [305, 480, 195], [480, 660, 335], [660, 910, 340], [910, 1115, 365],
+  [1115, 1262, 480], [1262, 1300, 675], [1300, 1352, 345]
+];
+
+// The back wall keeps the painting wherever the wall shows in it, including the
+// glow around the lamp. Everything the furniture hides is filled in from the
+// nearest visible wall in the same row, and the painting's dark top edge is
+// evened out so the wall above the furniture reads as lit wall, not black.
+function backWallTexture(img) {
+  const { x0, x1 } = WALLS.back;
+  const w = x1 - x0, CELL = 8, TOP = 150;
+  const sw = Math.ceil(w / CELL), sh = Math.ceil(WALL_ROWS / CELL);
+  const clearAt = (x) => (BACK_CLEAR.find(([a, b]) => x >= a && x < b) || BACK_CLEAR[BACK_CLEAR.length - 1])[2];
+
+  // A coarse copy of the wall to do the filling on.
+  const small = document.createElement('canvas');
+  small.width = sw;
+  small.height = sh;
+  const sctx = small.getContext('2d', { willReadFrequently: true });
+  sctx.drawImage(img, x0, 0, w, WALL_ROWS, 0, 0, sw, sh);
+  const data = sctx.getImageData(0, 0, sw, sh), px = data.data;
+  const at = (i, j) => (j * sw + i) * 4;
+  for (let j = 0; j < sh; j++) {
+    const known = [];
+    for (let i = 0; i < sw; i++) known.push((j + 1) * CELL <= clearAt(x0 + i * CELL + CELL / 2));
+    for (let i = 0; i < sw; i++) {
+      if (known[i]) continue;
+      let l = i - 1, r = i + 1;
+      while (l >= 0 && !known[l]) l--;
+      while (r < sw && !known[r]) r++;
+      for (let c = 0; c < 3; c++) {
+        const above = j > 0 ? px[at(i, j - 1) + c] : null;
+        let side = null;
+        if (l >= 0 && r < sw) side = px[at(l, j) + c] + (px[at(r, j) + c] - px[at(l, j) + c]) * ((i - l) / (r - l));
+        else if (l >= 0 || r < sw) side = px[at(l >= 0 ? l : r, j) + c];
+        // Mostly carry the wall down from above, easing toward what the sides say.
+        px[at(i, j) + c] = above === null ? side : side === null ? above : above * 0.8 + side * 0.2;
+      }
+    }
+  }
+  // Pull the dark top rows most of the way toward the lit wall just below them.
+  const lit = Math.floor((TOP + 20) / CELL);
+  for (let j = 0; j * CELL < TOP; j++) {
+    const t = 0.9 * (1 - (j * CELL) / TOP);
+    for (let i = 0; i < sw; i++) {
+      for (let c = 0; c < 3; c++) px[at(i, j) + c] += (px[at(i, lit) + c] - px[at(i, j) + c]) * t;
+    }
+  }
+  sctx.putImageData(data, 0, 0);
+
+  const cv = document.createElement('canvas');
+  cv.width = w;
+  cv.height = WALL_PAD + WALL_ROWS;
+  const ctx = cv.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(small, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL); // above the picture: more of the same wall
+  ctx.drawImage(small, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
+  // The painting itself over the fill wherever the wall is clear, faded in at its top and bottom.
+  for (const [a, b, rows] of BACK_CLEAR) {
+    const bw = b - a, bh = rows - TOP;
+    const part = document.createElement('canvas');
+    part.width = bw;
+    part.height = bh;
+    const pctx = part.getContext('2d');
+    pctx.drawImage(img, a, TOP, bw, bh, 0, 0, bw, bh);
+    const fade = pctx.createLinearGradient(0, 0, 0, bh);
+    fade.addColorStop(0, 'rgba(0,0,0,0)');
+    fade.addColorStop(Math.min(0.45, 60 / bh), '#000');
+    fade.addColorStop(Math.max(0.55, 1 - 30 / bh), '#000');
+    fade.addColorStop(1, 'rgba(0,0,0,0)');
+    pctx.globalCompositeOperation = 'destination-in';
+    pctx.fillStyle = fade;
+    pctx.fillRect(0, 0, bw, bh);
+    ctx.drawImage(part, a - x0, WALL_PAD + TOP);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 4;
+  return tex;
 }
 
 function wallTexture(img, { x0, x1, clean }) {
@@ -326,7 +411,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
 
     const wall = (key, corners) => {
       const r = WALLS[key];
-      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: wallTexture(img, r) }));
+      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? backWallTexture(img) : wallTexture(img, r) }));
     };
     wall('back', [[LEFT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z]]);
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
