@@ -60,11 +60,14 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const canvas = canvasRef.current;
     if (!room || !canvas) return;
 
-    // Phones and low-power devices get the small model at a capped resolution,
-    // drawn once; the camera only follows the pointer on larger screens.
+    // Phones, tablets and low-memory devices get the small model, drawn once; the
+    // camera only follows the pointer on larger screens. A narrow desktop window
+    // is still a desktop, so it keeps the full model.
     const stacked = matchMedia('(max-aspect-ratio: 3/2)').matches;
-    const lite = stacked || matchMedia('(pointer: coarse)').matches || (navigator.deviceMemory || 8) <= 4 || (navigator.hardwareConcurrency || 8) <= 4;
-    const still = reduce || stacked || matchMedia('(pointer: coarse)').matches;
+    const touch = matchMedia('(pointer: coarse)').matches;
+    const shortSide = Math.min(screen.width, screen.height);
+    const lite = touch || (shortSide > 0 && shortSide <= 820) || (navigator.deviceMemory || 8) <= 4;
+    const still = reduce || stacked || touch;
 
     // Until the 3D room is up (or if it can't run), the flat image drifts instead.
     let live = false, scene = null;
@@ -180,7 +183,22 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         <p style={{ margin: 0, fontFamily: "'Bodoni Moda',serif", fontSize: 'clamp(21px,1.9vw,29px)', lineHeight: 1.22, letterSpacing: '-.015em', color: '#F7F0F0', textWrap: 'pretty' }}>
           Aspiring product manager building at the seam of <em style={{ fontStyle: 'italic', color: '#E0A6BE' }}>sound</em> and software.
         </p>
-        <span style={{ fontSize: 10.5, letterSpacing: '.12em', color: '#84828F' }}>Hover a lit object. Click to enter.</span>
+        <span
+          data-hint=""
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 10, alignSelf: 'flex-start',
+            fontSize: 13, fontWeight: 600, letterSpacing: '.09em', color: '#F7F0F0',
+            textShadow: '0 0 16px rgba(224,166,190,.6), 0 0 2px rgba(11,13,12,.9)'
+          }}
+        >
+          <span
+            data-hintdot=""
+            aria-hidden="true"
+            style={{ flex: 'none', width: 8, height: 8, borderRadius: '50%', background: '#E0A6BE', boxShadow: '0 0 0 1px rgba(224,166,190,.5), 0 0 14px 3px rgba(142,6,64,.8)' }}
+          />
+          <span data-hint-hover="">Hover a lit object. Click to enter.</span>
+          <span data-hint-touch="">Tap a lit object to enter.</span>
+        </span>
       </div>
 
       <div

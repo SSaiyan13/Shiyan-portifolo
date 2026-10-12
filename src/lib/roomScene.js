@@ -24,6 +24,33 @@ const HOT_BOXES = {
 const PORTRAIT_3D = [[0.121, 0.119, -0.182], [0.217, 0.117, -0.161], [0.216, -0.004, -0.15], [0.119, -0.004, -0.157]];
 const PORTRAIT_PX = [[953, 381], [1104, 383], [1093, 573], [941, 564]];
 
+// The laptop lid and the tablet, same idea: corners on the model, corners in room.png.
+// Their screens are taken from the painting so the code and the diagram stay sharp.
+const SCREENS = [
+  {
+    at: [[-0.1015, 0.1415, -0.257], [0.0945, 0.1415, -0.2548], [0.0945, 0.0075, -0.2469], [-0.1015, 0.0075, -0.2491]],
+    px: [[672, 353.2], [899.2, 353.2], [899.2, 508], [672, 508]]
+  },
+  {
+    at: [[-0.2543, 0.048, -0.0568], [-0.168, 0.048, -0.1431], [-0.1398, -0.012, -0.1149], [-0.226, -0.012, -0.0287]],
+    px: [[422.7, 490.7], [571.7, 484], [604, 577.3], [453.3, 596.7]]
+  }
+];
+
+// Lighting for the furniture, placed where the painting's light sources are.
+// Point lights are [colour, intensity, decay, x, y, z]; the fill comes from the camera side.
+const LIGHTS = {
+  sky: 0x84838c,
+  ground: 0x1c1612,
+  ambient: 2.4,
+  points: [
+    [0xffc98a, 0.95, 1, -0.25, 0.19, -0.2], // desk lamp
+    [0xffa24a, 0.8, 2, 0.48, 0.42, -0.2], // neon bolt
+    [0xff8a3a, 0.12, 1, -0.5, -0.02, -0.36] // LED strip behind the bed
+  ],
+  fill: [0x9aa6bd, 2.8, 0.5, 0.9, 1.4]
+};
+
 // Wall regions of room.png. Rows above `clean` are unobstructed wall and are used
 // as-is; below that the furniture starts, so the wall colour is carried on down.
 const WALLS = {
@@ -86,13 +113,17 @@ function floorTexture() {
 export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = {}) {
   let renderer;
   try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: !lite, powerPreference: lite ? 'low-power' : 'high-performance' });
+    renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: lite ? 'low-power' : 'high-performance' });
   } catch {
     onFail?.();
     return { setPointer() {}, destroy() {} };
   }
-  const maxDpr = lite ? 1.25 : 2;
+  // Larger screens are supersampled a little so edges and textures stay smooth on
+  // 1x displays; the phone canvas is small and drawn once, so it can be sharp too.
+  const minDpr = lite ? 1 : 1.5;
   renderer.setClearColor(0x0b0d0c);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
 
   const scene = new THREE.Scene();
   const aspect = IMG_W / IMG_H;
@@ -158,6 +189,8 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     disposables.push(geo, mat);
     if (mat.map) disposables.push(mat.map);
     mat.side = THREE.DoubleSide;
+    // The room is painted, not lit: keep its colours exactly as they are in room.png.
+    mat.toneMapped = false;
     const m = new THREE.Mesh(geo, mat);
     scene.add(m);
     return m;
@@ -184,7 +217,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   const draw = () => {
     const w = canvas.clientWidth, h = canvas.clientHeight;
     if (!w || !h) return;
-    const dpr = Math.min(devicePixelRatio || 1, maxDpr);
+    const dpr = Math.min(Math.max(devicePixelRatio || 1, minDpr), 2);
     if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
       renderer.setPixelRatio(dpr);
       renderer.setSize(w, h, false);
@@ -254,7 +287,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     paint.colorSpace = THREE.SRGBColorSpace;
     paint.anisotropy = 4;
     paint.needsUpdate = true;
-    const paintMat = new THREE.MeshBasicMaterial({ map: paint, side: THREE.DoubleSide });
+    const paintMat = new THREE.MeshBasicMaterial({ map: paint, side: THREE.DoubleSide, toneMapped: false });
     disposables.push(paint, paintMat);
     const paintUV = (corners) => (p, s, t) => {
       const [tl, tr, br, bl] = corners;
@@ -274,29 +307,50 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
       scene.add(new THREE.Mesh(geo, paintMat));
     }
 
-    // The hand-drawn portrait, laid over the model's own frame.
-    const centre = PORTRAIT_3D.reduce((s, p) => s.add(new THREE.Vector3(...p)), new THREE.Vector3()).multiplyScalar(0.25);
-    const frame = PORTRAIT_3D.map((p) => {
-      const q = new THREE.Vector3(...p).sub(centre).multiplyScalar(1.13).add(centre);
-      return [q.x, q.y, q.z + 0.016];
-    });
-    // The model's frame isn't perfectly flat, so bias depth to keep it from poking through.
-    const portraitMat = paintMat.clone();
-    portraitMat.polygonOffset = true;
-    portraitMat.polygonOffsetFactor = -2;
-    portraitMat.polygonOffsetUnits = -150000;
-    const portraitGeo = quad(frame, paintUV(PORTRAIT_PX), 6);
-    disposables.push(portraitGeo, portraitMat);
-    scene.add(new THREE.Mesh(portraitGeo, portraitMat));
+    // Pieces of the painting laid over the model's own surfaces. The surfaces aren't
+    // perfectly flat, so depth is biased to keep the model from poking through.
+    const overlay = (corners, px, lift, bias) => {
+      const [tl, tr, , bl] = corners.map((p) => new THREE.Vector3(...p));
+      const normal = tr.clone().sub(tl).cross(bl.clone().sub(tl)).normalize();
+      if (normal.z < 0) normal.negate();
+      const mat = paintMat.clone();
+      mat.polygonOffset = true;
+      mat.polygonOffsetFactor = -2;
+      mat.polygonOffsetUnits = bias;
+      const geo = quad(corners.map((p) => new THREE.Vector3(...p).addScaledVector(normal, lift).toArray()), paintUV(px), 6);
+      disposables.push(geo, mat);
+      scene.add(new THREE.Mesh(geo, mat));
+    };
 
+    // The hand-drawn portrait covers the model's frame, with a little margin.
+    const centre = PORTRAIT_3D.reduce((s, p) => s.add(new THREE.Vector3(...p)), new THREE.Vector3()).multiplyScalar(0.25);
+    overlay(PORTRAIT_3D.map((p) => new THREE.Vector3(...p).sub(centre).multiplyScalar(1.13).add(centre).toArray()), PORTRAIT_PX, 0.016, -150000);
+    for (const s of SCREENS) overlay(s.at, s.px, 0.003, -20000);
+
+    // The furniture is lit for real, so its surfaces shade smoothly instead of
+    // showing the flat texture alone.
+    const aniso = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     gltf.scene.traverse((o) => {
       if (!o.isMesh) return;
-      const lit = o.material;
-      o.material = new THREE.MeshBasicMaterial({ map: lit.map, color: new THREE.Color(1.55, 1.5, 1.45) });
-      disposables.push(o.geometry, o.material, lit);
-      if (lit.map) disposables.push(lit.map);
+      const m = o.material;
+      disposables.push(o.geometry, m);
+      for (const tex of [m.map, m.normalMap, m.roughnessMap, m.metalnessMap]) {
+        if (!tex) continue;
+        tex.anisotropy = aniso;
+        disposables.push(tex);
+      }
     });
     scene.add(gltf.scene);
+
+    scene.add(new THREE.HemisphereLight(LIGHTS.sky, LIGHTS.ground, LIGHTS.ambient));
+    for (const [color, intensity, decay, x, y, z] of LIGHTS.points) {
+      const light = new THREE.PointLight(color, intensity, 0, decay);
+      light.position.set(x, y, z);
+      scene.add(light);
+    }
+    const fill = new THREE.DirectionalLight(LIGHTS.fill[0], LIGHTS.fill[1]);
+    fill.position.set(LIGHTS.fill[2], LIGHTS.fill[3], LIGHTS.fill[4]);
+    scene.add(fill);
 
     ready = true;
     draw();
