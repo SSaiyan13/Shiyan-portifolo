@@ -71,20 +71,19 @@ const POLAROIDS_PX = [
 // The part of room.png (in its pixels) to show in a box of the given CSS size.
 // At the painting's own shape that is the whole picture, and a taller box gains
 // wall above and floor below. On a phone-width box the view also zooms in so the
-// three clickable objects are big enough to tap, by cropping from the left, where
-// nothing is clickable. It crops at clean points rather than through an object:
-// first the bed and poster go, then the lamp and tablet, leaving the laptop,
-// portrait and bass. The result can reach past the picture's top and bottom edges.
-const CROPS = [0.615, 0.805]; // width kept, as a share of the painting: from the laptop, from the lamp
+// three clickable objects are big enough to tap: it drops the bed and poster on
+// the left, where nothing is clickable, and keeps everything from the desk lamp
+// across (lamp, tablet, laptop, portrait, bass). The result can reach past the
+// picture's top and bottom edges.
+const PHONE_KEEP = 0.765; // share of the painting's width kept on phones, measured from the right
 export function frameFor(width, height) {
   const aspect = width / height, full = IMG_W / IMG_H;
   if (!(aspect > 0) || aspect >= full - 0.005) return { x: 0, y: 0, w: IMG_W, h: IMG_H };
-  // The tightest crop that still shows most of the painting's height.
-  const keep = width <= 640 ? CROPS.find((c) => (c * IMG_W) / aspect >= 0.86 * IMG_H) : null;
-  if (keep) {
-    const w = keep * IMG_W, h = w / aspect;
+  const cropW = PHONE_KEEP * IMG_W, cropH = cropW / aspect;
+  // Only crop when the box is tall enough that the crop still shows most of the height.
+  if (width <= 640 && cropH >= 0.8 * IMG_H) {
     // Sit the view just under the furniture, so spare height shows wall, not floor.
-    return { x: IMG_W - w, y: 0.93 * IMG_H - h, w, h };
+    return { x: IMG_W - cropW, y: 0.95 * IMG_H - cropH, w: cropW, h: cropH };
   }
   const h = IMG_W / aspect;
   // The furniture sits a touch below the picture's middle; follow it as the view grows.
