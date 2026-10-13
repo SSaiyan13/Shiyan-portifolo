@@ -11,7 +11,7 @@ export const workProjects = [
   },
   {
     title: 'Jolty',
-    context: 'Hackathon · Produchackathon · 1st place overall',
+    context: 'Hackathon · Producathon · 1st place overall',
     subtitle: 'An app to build your creative muscle.',
     href: 'https://devpost.com/software/jotly',
     linkLabel: 'Devpost',
