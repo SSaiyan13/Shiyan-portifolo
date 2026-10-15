@@ -74,6 +74,11 @@ const POLAROIDS_PX = [
 // how far it moves, in model units (left, and a little forward to clear the desk).
 const BASS_MOVE = [-0.122, 0, 0.05];
 
+// The bass is drawn from the painting rather than shown as the 3D model, which
+// is too soft at this size: a cut-out of it (from room.png, at this offset and
+// size) on a card standing where the bass stands, at depth z.
+const BASS_CARD = { src: '/assets/bass-cut.webp', x: 1220, y: 340, w: 270, h: 660, z: 0 };
+
 // Camera movement. Dragging pans the view across the painting (it can reach the
 // painting's edges, and stretches a little past them) and turns the camera a
 // little; letting go eases it back. Hovering an object on desktop moves the view
@@ -493,8 +498,10 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   const loader = new GLTFLoader();
   loader.setMeshoptDecoder(MeshoptDecoder);
   const loadModel = loader.loadAsync(lite ? '/assets/room-3d-lite.glb' : '/assets/room-3d.glb');
+  // If the cut-out can't load, the 3D bass stays instead.
+  const loadBass = new THREE.TextureLoader().loadAsync(BASS_CARD.src).catch(() => null);
 
-  Promise.all([loadImage, loadModel]).then(([img, gltf]) => {
+  Promise.all([loadImage, loadModel, loadBass]).then(([img, gltf, bassTex]) => {
     if (destroyed) return;
 
     const wall = (key, corners) => {
@@ -580,6 +587,31 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     scene.add(gltf.scene);
     bass = gltf.scene.getObjectByName('bass') || null;
     if (bass) bassHome.copy(bass.position);
+    if (bass && bassTex) {
+      // The card's corners are where the cut-out's corners fall on the plane
+      // z = BASS_CARD.z, as seen from the reference camera, so at rest it lines up
+      // with the painting exactly. It moves with the bass, which it replaces.
+      const { x, y, w, h, z } = BASS_CARD;
+      const onPlane = (px, py) => {
+        const d = fromPx(px, py);
+        const k = (z - CAM_POS.z) / d.z;
+        return [CAM_POS.x + d.x * k, CAM_POS.y + d.y * k, z];
+      };
+      const geo = quad([onPlane(x, y), onPlane(x + w, y), onPlane(x + w, y + h), onPlane(x, y + h)], (p) => {
+        const [px, py] = toPx(p);
+        return [(px - x) / w, 1 - (py - y) / h];
+      }, 8);
+      bassTex.colorSpace = THREE.SRGBColorSpace;
+      bassTex.anisotropy = aniso;
+      const mat = new THREE.MeshBasicMaterial({ map: bassTex, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+      disposables.push(geo, mat, bassTex);
+      const card = new THREE.Mesh(geo, mat);
+      card.renderOrder = 1;
+      scene.add(card);
+      bass.visible = false;
+      bass = card;
+      bassHome.set(0, 0, 0);
+    }
 
     scene.add(new THREE.HemisphereLight(LIGHTS.sky, LIGHTS.ground, LIGHTS.ambient));
     for (const [color, intensity, decay, x, y, z] of LIGHTS.points) {
