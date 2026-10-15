@@ -74,6 +74,21 @@ const POLAROIDS_PX = [
 // how far it moves, in model units (left, and a little forward to clear the desk).
 const BASS_MOVE = [-0.122, 0, 0.05];
 
+// Camera movement. Dragging pans the view across the painting (it can reach the
+// painting's edges, and stretches a little past them) and turns the camera a
+// little; letting go eases it back. Hovering an object on desktop moves the view
+// in toward it. On phones the room first shows whole, then glides in to the desk.
+const MOVE = {
+  panY: 70, // painting pixels a drag can move the view up or down
+  stretch: 0.3, // how far a drag follows past the edge
+  drag: 0.35, // share of the way to the finger per 60th of a second
+  ease: 0.075, // the same for the mouse and for easing back
+  focus: 0.07, // how much hovering zooms in
+  introDelay: 650, introMs: 1900
+};
+const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
+
 // The part of room.png (in its pixels) to show in a box of the given CSS size.
 // At the painting's own shape that is the whole picture, and a taller box gains
 // wall above and floor below. A phone-width box zooms in instead, so the three
@@ -112,7 +127,7 @@ const BACK_CLEAR = [
 // glow around the lamp. Everything the furniture hides is filled in from the
 // nearest visible wall in the same row, and the painting's dark top edge is
 // evened out so the wall above the furniture reads as lit wall, not black.
-function backWallTexture(img) {
+function backWallTexture(img, smooth = false) {
   const { x0, x1 } = WALLS.back;
   const w = x1 - x0, CELL = 8, TOP = 150;
   const sw = Math.ceil(w / CELL), sh = Math.ceil(WALL_ROWS / CELL);
@@ -159,6 +174,32 @@ function backWallTexture(img) {
   cv.height = WALL_PAD + WALL_ROWS;
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
+  if (smooth) {
+    // Phones see the wall up close, where the pieced-together painting shows its
+    // seams. They get one even wall instead: the fill shrunk right down and grown
+    // back, which keeps only the broad light (the lamp glow, the darker edges).
+    const shrink = (src, f) => {
+      const c = document.createElement('canvas');
+      c.width = Math.max(2, Math.round(src.width / f));
+      c.height = Math.max(2, Math.round(src.height / f));
+      const x = c.getContext('2d');
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(src, 0, 0, c.width, c.height);
+      return c;
+    };
+    const tiny = shrink(shrink(small, 3), 3);
+    const mid = document.createElement('canvas');
+    mid.width = sw;
+    mid.height = sh;
+    const mctx = mid.getContext('2d');
+    mctx.imageSmoothingQuality = 'high';
+    mctx.drawImage(tiny, 0, 0, sw, sh);
+    ctx.drawImage(mid, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL);
+    ctx.drawImage(mid, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
   ctx.drawImage(small, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL); // above the picture: more of the same wall
   ctx.drawImage(small, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
   // The painting itself over the fill wherever the wall is clear, faded in at its top and bottom.
@@ -248,7 +289,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: lite ? 'low-power' : 'high-performance' });
   } catch {
     onFail?.();
-    return { setPointer() {}, destroy() {} };
+    return { setPointer() {}, look() {}, setFocus() {}, introduce() {}, destroy() {} };
   }
   // Larger screens are supersampled a little so edges and textures stay smooth on
   // 1x displays; the phone canvas is small and drawn once, so it can be sharp too.
@@ -332,19 +373,29 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   };
 
   let destroyed = false, raf = 0, ready = false;
-  let tx = 0, ty = 0, cx = 0, cy = 0;
-  // The bass and where the model file put it; `bassMoved` is whether it currently stands by the desk.
-  let bass = null, bassMoved = false;
+  // Camera state: each value eases toward its goal. `ox`, `oy` turn the camera
+  // (mouse or drag), `px`, `py` pan the view in painting pixels (drag), and `f`
+  // is the hover zoom toward the point `fx`, `fy`.
+  const cur = { ox: 0, oy: 0, px: 0, py: 0, f: 0, fx: IMG_W / 2, fy: IMG_H / 2 };
+  const goal = { ...cur };
+  let follow = MOVE.ease, lastT = 0;
+  // Phones: 0 shows the whole room, 1 the desk. `intro` is when the glide in starts.
+  let zoom = 1, intro = 0;
+  // The view before any drag or hover, which is what a drag is measured against.
+  let rest = { x: 0, y: 0, w: IMG_W, h: IMG_H };
+  // The bass and where the model file put it; `bassT` is how far it has moved toward the desk.
+  let bass = null, bassT = 0;
   const bassHome = new THREE.Vector3();
 
   const layout = () => {
     if (!onLayout) return;
     const rects = {};
     for (const [key, b] of Object.entries(HOT_BOXES)) {
-      const move = key === 'music' && bassMoved ? BASS_MOVE : [0, 0, 0];
+      const t = key === 'music' ? bassT : 0;
+      const move = BASS_MOVE.map((d) => d * t);
       let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
       for (let i = 0; i < 8; i++) {
-        v.set(b[i & 1 ? 3 : 0] + move[0], b[i & 2 ? 4 : 1] + move[1], b[i & 4 ? 5 : 2] + move[2]).project(cam);
+        v.set(b[i & 1 ? 3 : 0] + move[0], b[i & 2 ? 4 : 1] + move[1], b[i & 4 ? 5 : 2] + move[2]).project(viewCam);
         const x = (v.x + 1) / 2, y = (1 - v.y) / 2;
         x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y);
       }
@@ -361,14 +412,34 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
       renderer.setPixelRatio(dpr);
       renderer.setSize(w, h, false);
     }
-    cam.position.set(CAM_POS.x + cx * 0.07, CAM_POS.y + cy * 0.035, CAM_POS.z);
+    cam.position.set(CAM_POS.x + cur.ox * 0.07, CAM_POS.y + cur.oy * 0.035, CAM_POS.z);
     cam.lookAt(pivot);
     cam.updateMatrixWorld();
-    const view = frameFor(w, h, !!bass);
-    if (bass && view.moved !== bassMoved) {
-      bassMoved = view.moved;
-      bass.position.copy(bassHome);
-      if (bassMoved) bass.position.add(v.set(...BASS_MOVE));
+    const base = frameFor(w, h, !!bass);
+    const view = { ...base };
+    if (base.moved) {
+      // Between the whole room (at this box's shape) and the desk view.
+      const wh = IMG_W / (w / h);
+      const wide = { x: 0, y: 0.56 * IMG_H - wh / 2, w: IMG_W, h: wh };
+      for (const k of ['x', 'y', 'w', 'h']) view[k] = wide[k] + (base[k] - wide[k]) * zoom;
+    }
+    rest = { ...view };
+    if (cur.f > 0.0005) {
+      // Hover: move in a little, and drift toward the object.
+      const s = 1 - MOVE.focus * cur.f;
+      const mx = view.x + view.w / 2, my = view.y + view.h / 2;
+      const nx = mx + (cur.fx - mx) * 0.3 * cur.f, ny = my + (cur.fy - my) * 0.3 * cur.f;
+      view.w *= s;
+      view.h *= s;
+      view.x = nx - view.w / 2;
+      view.y = ny - view.h / 2;
+    }
+    view.x += cur.px;
+    view.y += cur.py;
+    const t = base.moved ? zoom : 0;
+    if (bass && t !== bassT) {
+      bassT = t;
+      bass.position.copy(bassHome).add(v.set(...BASS_MOVE).multiplyScalar(t));
     }
     viewCam.position.copy(cam.position);
     viewCam.quaternion.copy(cam.quaternion);
@@ -379,13 +450,30 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   };
 
   // Renders only while something is changing, so an idle page costs nothing.
-  const tick = () => {
+  const tick = (now) => {
     raf = 0;
     if (destroyed || !ready) return;
-    cx += (tx - cx) * 0.075;
-    cy += (ty - cy) * 0.075;
+    // Eased per 60th of a second, so 120 Hz screens move at the same speed.
+    const dt = lastT ? Math.min((now - lastT) / (1000 / 60), 4) : 1;
+    lastT = now;
+    const k = 1 - (1 - follow) ** dt;
+    let moving = false;
+    for (const key in cur) {
+      const d = goal[key] - cur[key];
+      if (Math.abs(d) > (key === 'ox' || key === 'oy' || key === 'f' ? 0.001 : 0.3)) {
+        cur[key] += d * k;
+        moving = true;
+      } else cur[key] = goal[key];
+    }
+    if (intro) {
+      const p = (now - intro) / MOVE.introMs;
+      zoom = p <= 0 ? 0 : p >= 1 ? 1 : easeInOut(p);
+      if (p >= 1) intro = 0;
+      else moving = true;
+    }
     draw();
-    if (Math.abs(tx - cx) > 0.001 || Math.abs(ty - cy) > 0.001) raf = requestAnimationFrame(tick);
+    if (moving) raf = requestAnimationFrame(tick);
+    else lastT = 0;
   };
   const invalidate = () => {
     if (!raf && !destroyed) raf = requestAnimationFrame(tick);
@@ -411,7 +499,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
 
     const wall = (key, corners) => {
       const r = WALLS[key];
-      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? backWallTexture(img) : wallTexture(img, r) }));
+      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? backWallTexture(img, lite) : wallTexture(img, r) }));
     };
     wall('back', [[LEFT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z]]);
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
@@ -517,9 +605,51 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
   ro.observe(canvas);
 
   return {
+    // Mouse position, -1..1 across the window.
     setPointer(nx, ny) {
-      tx = nx;
-      ty = ny;
+      goal.ox = nx;
+      goal.oy = ny;
+      follow = MOVE.ease;
+      invalidate();
+    },
+    // A drag of dx, dy CSS pixels so far, or null when the finger lifts.
+    look(dx, dy) {
+      if (dx === null) {
+        goal.ox = goal.oy = goal.px = goal.py = 0;
+        follow = MOVE.ease;
+      } else {
+        const w = canvas.clientWidth || 1, h = canvas.clientHeight || 1;
+        const k = rest.w / w;
+        const stretch = (x, lo, hi) => (x < lo ? lo + (x - lo) * MOVE.stretch : x > hi ? hi + (x - hi) * MOVE.stretch : x);
+        goal.px = stretch(-dx * k, Math.min(0, -rest.x), Math.max(0, IMG_W - rest.x - rest.w));
+        goal.py = stretch(-dy * k, -MOVE.panY, MOVE.panY);
+        goal.ox = clamp((-dx / w) * 2.4, -1.4, 1.4);
+        goal.oy = clamp((dy / h) * 2.4, -1, 1);
+        follow = MOVE.drag;
+      }
+      invalidate();
+    },
+    // The object being hovered ('work', 'about', 'music'), or null.
+    setFocus(key) {
+      const b = HOT_BOXES[key];
+      if (b) {
+        const t = key === 'music' ? bassT : 0;
+        const [x, y] = toPx(v.set((b[0] + b[3]) / 2 + BASS_MOVE[0] * t, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2 + BASS_MOVE[2] * t));
+        if (cur.f < 0.01) {
+          cur.fx = x;
+          cur.fy = y;
+        }
+        goal.fx = x;
+        goal.fy = y;
+      }
+      goal.f = b ? 1 : 0;
+      follow = MOVE.ease;
+      invalidate();
+    },
+    // Phones: show the whole room, then glide in to the desk.
+    introduce() {
+      zoom = 0;
+      intro = performance.now() + MOVE.introDelay;
       invalidate();
     },
     destroy() {

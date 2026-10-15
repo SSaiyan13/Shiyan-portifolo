@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { IMG_W, IMG_H, frameFor, mountRoom } from '../lib/roomScene.js';
 
-const frameStyle = { position: 'absolute', left: 0, top: 0, width: '100%', aspectRatio: `${IMG_W}/${IMG_H}` };
+const frameStyle = { position: 'absolute', left: 0, top: 0, width: '100%', aspectRatio: `${IMG_W}/${IMG_H}`, transition: 'opacity .9s ease' };
 
 const hotspots = [
   {
@@ -46,6 +46,9 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
   // Whether the 3D scene is showing with its bass moved beside the desk (phones);
   // the framing differs from the flat painting's, where the bass can't move.
   const bassMovesRef = useRef(false);
+  // While the 3D room is up, it places the hotspots itself, relative to the room box.
+  const liveRef = useRef(false);
+  const sceneRef = useRef(null);
   const fitRef = useRef(() => {});
 
   // Keep the painting framed for the room box's current shape (see frameFor).
@@ -55,11 +58,19 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       const w = room.clientWidth, h = room.clientHeight;
       if (!w || !h) return;
       const r = frameFor(w, h, bassMovesRef.current);
-      const style = { width: `${(IMG_W / r.w) * 100}%`, left: `${(-r.x / r.w) * 100}%`, top: `${(-r.y / r.h) * 100}%` };
-      frameRefs.current.forEach((el) => el && Object.assign(el.style, style));
+      const style = { width: `${(IMG_W / r.w) * 100}%`, left: `${(-r.x / r.w) * 100}%`, top: `${(-r.y / r.h) * 100}%`, height: '', aspectRatio: `${IMG_W}/${IMG_H}` };
+      frameRefs.current.forEach((el, i) => {
+        if (!el) return;
+        Object.assign(el.style, i === 1 && liveRef.current ? { width: '100%', height: '100%', left: 0, top: 0, aspectRatio: 'auto' } : style);
+      });
     };
     fitRef.current = fit;
     fit();
+    // Phones open on the 3D room's whole-room view (see below), so the flat
+    // picture, which is framed tighter, starts hidden rather than jumping.
+    if (room.clientWidth <= 640 && !navigator.connection?.saveData) {
+      frameRefs.current.forEach((el) => el && Object.assign(el.style, { transition: 'none', opacity: 0 }));
+    }
     const ro = new ResizeObserver(fit);
     ro.observe(room);
     return () => ro.disconnect();
@@ -84,19 +95,31 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const canvas = canvasRef.current;
     if (!room || !canvas) return;
 
-    // Phones, tablets and low-memory devices get the small model, drawn once; the
-    // camera only follows the pointer on larger screens. A narrow desktop window
-    // is still a desktop, so it keeps the full model.
-    const stacked = matchMedia('(max-aspect-ratio: 3/2)').matches;
+    // Phones, tablets and low-memory devices get the small model. With a mouse the
+    // camera follows the pointer; on touch screens dragging the room looks around.
+    // A narrow desktop window is still a desktop, so it keeps the full model.
     const touch = matchMedia('(pointer: coarse)').matches;
     const shortSide = Math.min(screen.width, screen.height);
     const lite = touch || (shortSide > 0 && shortSide <= 820) || (navigator.deviceMemory || 8) <= 4;
-    const still = reduce || stacked || touch;
+    const follow = !reduce && !touch;
+    // On phones the 3D room opens on the whole room and glides in; the flat
+    // picture is only brought in if the 3D room is slow or fails.
+    const [imageFrame, hotFrame] = frameRefs.current;
+    const reveal = (el) => Object.assign(el.style, { transition: '', opacity: '' });
+    let shown = imageFrame.style.opacity !== '0';
+    const show = () => {
+      if (shown) return;
+      shown = true;
+      reveal(imageFrame);
+      reveal(hotFrame);
+    };
+    const showTimer = setTimeout(show, 2500);
 
     // Until the 3D room is up (or if it can't run), the flat image drifts instead.
     let live = false, scene = null;
     let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
     const onMove = (e) => {
+      if (e.pointerType !== 'mouse') return;
       const nx = e.clientX / innerWidth - 0.5, ny = e.clientY / innerHeight - 0.5;
       if (live) {
         scene.setPointer(nx * 2, ny * -2);
@@ -113,33 +136,85 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       raf = !live && (Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05) ? requestAnimationFrame(tick) : 0;
     };
     const flat = () => {
-      live = false;
+      live = liveRef.current = false;
       bassMovesRef.current = false;
+      sceneRef.current = null;
+      room.style.touchAction = '';
       fitRef.current();
       canvas.style.opacity = 0;
+      reveal(imageFrame);
+      show();
       hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, h.rect));
+    };
+
+    // Touch: dragging the room looks around and lets go back to rest. A drag that
+    // started on a lit object doesn't count as a tap on it.
+    let drag = null, dragged = false;
+    const onDown = (e) => {
+      if (!live || e.pointerType === 'mouse' || drag) return;
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false };
+      dragged = false;
+    };
+    const onDrag = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      if (!drag.on && Math.hypot(dx, dy) < 8) return;
+      drag.on = dragged = true;
+      scene.look(dx, dy);
+    };
+    const onUp = (e) => {
+      if (!drag || e.pointerId !== drag.id) return;
+      if (drag.on) scene.look(null);
+      drag = null;
+    };
+    const onClick = (e) => {
+      if (!dragged) return;
+      dragged = false;
+      e.stopPropagation();
+      e.preventDefault();
     };
 
     if (!navigator.connection?.saveData) {
       scene = mountRoom(canvas, {
         lite,
         onReady: (bassCanMove) => {
-          live = true;
+          live = liveRef.current = true;
+          sceneRef.current = scene;
           bassMovesRef.current = bassCanMove;
           fitRef.current();
           cancelAnimationFrame(raf);
           raf = 0;
           room.style.transform = 'translate3d(-50%,-50%,0)';
+          room.style.touchAction = 'none';
           canvas.style.opacity = 1;
+          clearTimeout(showTimer);
+          if (!shown) {
+            // The canvas fades in on the whole room, then the camera glides in.
+            shown = true;
+            reveal(hotFrame);
+            if (!reduce) scene.introduce();
+          }
         },
         onLayout: (rects) => hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, rects[h.key])),
         onFail: flat
       });
-    }
-    if (!still) addEventListener('pointermove', onMove, { passive: true });
+    } else show();
+    if (follow) addEventListener('pointermove', onMove, { passive: true });
+    room.addEventListener('pointerdown', onDown);
+    addEventListener('pointermove', onDrag, { passive: true });
+    addEventListener('pointerup', onUp);
+    addEventListener('pointercancel', onUp);
+    room.addEventListener('click', onClick, true);
     return () => {
       removeEventListener('pointermove', onMove);
+      room.removeEventListener('pointerdown', onDown);
+      removeEventListener('pointermove', onDrag);
+      removeEventListener('pointerup', onUp);
+      removeEventListener('pointercancel', onUp);
+      room.removeEventListener('click', onClick, true);
+      clearTimeout(showTimer);
       cancelAnimationFrame(raf);
+      sceneRef.current = null;
       scene?.destroy();
     };
   }, []);
@@ -151,7 +226,8 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         data-room=""
         style={{
           position: 'absolute', top: '50%', left: '50%', transform: 'translate3d(-50%,-50%,0)',
-          width: '106vw', aspectRatio: `${IMG_W}/${IMG_H}`, willChange: 'transform', overflow: 'hidden'
+          width: '106vw', aspectRatio: `${IMG_W}/${IMG_H}`, willChange: 'transform', overflow: 'hidden',
+          userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'
         }}
       >
         {/* The two frames are the whole painting, placed so the part chosen for this
@@ -179,6 +255,10 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
               data-hot=""
               aria-label={h.ariaLabel}
               onClick={(e) => onOpen(h.key, e)}
+              onPointerEnter={(e) => e.pointerType === 'mouse' && sceneRef.current?.setFocus(h.key)}
+              onPointerLeave={() => sceneRef.current?.setFocus(null)}
+              onFocus={() => sceneRef.current?.setFocus(h.key)}
+              onBlur={() => sceneRef.current?.setFocus(null)}
               style={{ position: 'absolute', ...h.rect, cursor: 'pointer', background: 'none', border: 0, pointerEvents: 'auto' }}
             >
               <span
@@ -231,7 +311,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
             style={{ flex: 'none', width: 8, height: 8, borderRadius: '50%', background: '#E0A6BE', boxShadow: '0 0 0 1px rgba(224,166,190,.5), 0 0 14px 3px rgba(142,6,64,.8)' }}
           />
           <span data-hint-hover="">Hover a lit object. Click to enter.</span>
-          <span data-hint-touch="">Tap a lit object to enter.</span>
+          <span data-hint-touch="">Drag to look around. Tap a lit object to enter.</span>
         </span>
       </div>
 
