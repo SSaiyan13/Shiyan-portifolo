@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useLayoutEffect, useRef } from 'react';
 import gsap from 'gsap';
-import { IMG_W, IMG_H, frameFor, mountRoom } from '../lib/roomScene.js';
+import { IMG_W, IMG_H, frameFor, wideFrame, mountRoom } from '../lib/roomScene.js';
 
 const frameStyle = { position: 'absolute', left: 0, top: 0, width: '100%', aspectRatio: `${IMG_W}/${IMG_H}`, transition: 'opacity .9s ease' };
 
@@ -49,6 +49,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
   // While the 3D room is up, it places the hotspots itself, relative to the room box.
   const liveRef = useRef(false);
   const sceneRef = useRef(null);
+  const introRef = useRef(false);
   const fitRef = useRef(() => {});
 
   // Keep the painting framed for the room box's current shape (see frameFor).
@@ -57,7 +58,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const fit = () => {
       const w = room.clientWidth, h = room.clientHeight;
       if (!w || !h) return;
-      const r = frameFor(w, h, bassMovesRef.current);
+      const r = introRef.current ? wideFrame(w, h) : frameFor(w, h, bassMovesRef.current);
       const style = { width: `${(IMG_W / r.w) * 100}%`, left: `${(-r.x / r.w) * 100}%`, top: `${(-r.y / r.h) * 100}%`, height: '', aspectRatio: `${IMG_W}/${IMG_H}` };
       frameRefs.current.forEach((el, i) => {
         if (!el) return;
@@ -65,12 +66,10 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       });
     };
     fitRef.current = fit;
+    // Phones open on the whole room and glide in once the 3D room is up, so the
+    // picture shown while it loads is framed the same way.
+    introRef.current = room.clientWidth <= 640 && !navigator.connection?.saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches;
     fit();
-    // Phones open on the 3D room's whole-room view (see below), so the flat
-    // picture, which is framed tighter, starts hidden rather than jumping.
-    if (room.clientWidth <= 640 && !navigator.connection?.saveData) {
-      frameRefs.current.forEach((el) => el && Object.assign(el.style, { transition: 'none', opacity: 0 }));
-    }
     const ro = new ResizeObserver(fit);
     ro.observe(room);
     return () => ro.disconnect();
@@ -102,18 +101,6 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const shortSide = Math.min(screen.width, screen.height);
     const lite = touch || (shortSide > 0 && shortSide <= 820) || (navigator.deviceMemory || 8) <= 4;
     const follow = !reduce && !touch;
-    // On phones the 3D room opens on the whole room and glides in; the flat
-    // picture is only brought in if the 3D room is slow or fails.
-    const [imageFrame, hotFrame] = frameRefs.current;
-    const reveal = (el) => Object.assign(el.style, { transition: '', opacity: '' });
-    let shown = imageFrame.style.opacity !== '0';
-    const show = () => {
-      if (shown) return;
-      shown = true;
-      reveal(imageFrame);
-      reveal(hotFrame);
-    };
-    const showTimer = setTimeout(show, 2500);
 
     // Until the 3D room is up (or if it can't run), the flat image drifts instead.
     let live = false, scene = null;
@@ -140,33 +127,64 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       bassMovesRef.current = false;
       sceneRef.current = null;
       room.style.touchAction = '';
+      introRef.current = false;
       fitRef.current();
       canvas.style.opacity = 0;
-      reveal(imageFrame);
-      show();
       hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, h.rect));
     };
 
-    // Touch: dragging the room looks around and lets go back to rest. A drag that
-    // started on a lit object doesn't count as a tap on it.
-    let drag = null, dragged = false;
+    // Touch: one finger drags to look around, two fingers pinch to zoom (and drag
+    // while zoomed). A double tap goes back to the start. A gesture that ends on
+    // a lit object doesn't count as a tap on it.
+    const pts = new Map();
+    let gest = null, dragged = false, lastTap = null;
+    const centre = () => {
+      const [a, b] = pts.values();
+      return b ? { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) } : { x: a.x, y: a.y, d: 0 };
+    };
+    // (Re)starts the gesture from where things are now, when a finger lands or lifts.
+    const begin = () => {
+      const c = centre(), r = canvas.getBoundingClientRect();
+      gest = { ...c, ox: c.x - r.left, oy: c.y - r.top, on: gest?.on || false };
+      scene.gestureStart();
+    };
     const onDown = (e) => {
-      if (!live || e.pointerType === 'mouse' || drag) return;
-      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, on: false };
-      dragged = false;
+      if (!live || e.pointerType === 'mouse' || pts.size >= 2) return;
+      if (!pts.size) dragged = false;
+      pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      begin();
     };
     const onDrag = (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
-      if (!drag.on && Math.hypot(dx, dy) < 8) return;
-      drag.on = dragged = true;
-      scene.look(dx, dy);
+      const p = pts.get(e.pointerId);
+      if (!p || !gest) return;
+      p.x = e.clientX;
+      p.y = e.clientY;
+      const c = centre();
+      const dx = c.x - gest.x, dy = c.y - gest.y, scale = gest.d && c.d ? c.d / gest.d : 1;
+      if (!gest.on && Math.hypot(dx, dy) < 8 && Math.abs(scale - 1) < 0.04) return;
+      gest.on = dragged = true;
+      scene.gesture(dx, dy, scale, gest.ox, gest.oy);
     };
     const onUp = (e) => {
-      if (!drag || e.pointerId !== drag.id) return;
-      if (drag.on) scene.look(null);
-      drag = null;
+      const p = pts.get(e.pointerId);
+      if (!p) return;
+      pts.delete(e.pointerId);
+      if (pts.size) {
+        begin();
+        return;
+      }
+      if (gest?.on) scene.gestureEnd();
+      else {
+        const now = performance.now();
+        if (lastTap && now - lastTap.t < 320 && Math.hypot(p.x - lastTap.x, p.y - lastTap.y) < 30) {
+          scene.reset();
+          lastTap = null;
+        } else lastTap = { t: now, x: p.x, y: p.y };
+      }
+      gest = null;
     };
+    // iOS Safari zooms the whole page on a pinch unless told not to.
+    const noPageZoom = (e) => live && e.preventDefault();
     const onClick = (e) => {
       if (!dragged) return;
       dragged = false;
@@ -187,20 +205,17 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
           room.style.transform = 'translate3d(-50%,-50%,0)';
           room.style.touchAction = 'none';
           canvas.style.opacity = 1;
-          clearTimeout(showTimer);
-          if (!shown) {
-            // The canvas fades in on the whole room, then the camera glides in.
-            shown = true;
-            reveal(hotFrame);
-            if (!reduce) scene.introduce();
-          }
         },
         onLayout: (rects) => hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, rects[h.key])),
-        onFail: flat
+        onFail: flat,
+        // The 3D room fades in over the picture at the same framing, then glides in.
+        intro: introRef.current
       });
-    } else show();
+      if (introRef.current) canvas.style.transition = 'opacity .45s ease';
+    }
     if (follow) addEventListener('pointermove', onMove, { passive: true });
     room.addEventListener('pointerdown', onDown);
+    room.addEventListener('gesturestart', noPageZoom);
     addEventListener('pointermove', onDrag, { passive: true });
     addEventListener('pointerup', onUp);
     addEventListener('pointercancel', onUp);
@@ -212,7 +227,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       removeEventListener('pointerup', onUp);
       removeEventListener('pointercancel', onUp);
       room.removeEventListener('click', onClick, true);
-      clearTimeout(showTimer);
+      room.removeEventListener('gesturestart', noPageZoom);
       cancelAnimationFrame(raf);
       sceneRef.current = null;
       scene?.destroy();
@@ -311,7 +326,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
             style={{ flex: 'none', width: 8, height: 8, borderRadius: '50%', background: '#E0A6BE', boxShadow: '0 0 0 1px rgba(224,166,190,.5), 0 0 14px 3px rgba(142,6,64,.8)' }}
           />
           <span data-hint-hover="">Hover a lit object. Click to enter.</span>
-          <span data-hint-touch="">Drag to look around. Tap a lit object to enter.</span>
+          <span data-hint-touch="">Drag to look around, pinch to zoom. Tap a lit object to enter.</span>
         </span>
       </div>
 
