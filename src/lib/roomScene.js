@@ -127,7 +127,7 @@ const BACK_CLEAR = [
 // glow around the lamp. Everything the furniture hides is filled in from the
 // nearest visible wall in the same row, and the painting's dark top edge is
 // evened out so the wall above the furniture reads as lit wall, not black.
-function backWallTexture(img) {
+function backWallTexture(img, smooth = false) {
   const { x0, x1 } = WALLS.back;
   const w = x1 - x0, CELL = 8, TOP = 150;
   const sw = Math.ceil(w / CELL), sh = Math.ceil(WALL_ROWS / CELL);
@@ -174,6 +174,32 @@ function backWallTexture(img) {
   cv.height = WALL_PAD + WALL_ROWS;
   const ctx = cv.getContext('2d');
   ctx.imageSmoothingQuality = 'high';
+  if (smooth) {
+    // Phones see the wall up close, where the pieced-together painting shows its
+    // seams. They get one even wall instead: the fill shrunk right down and grown
+    // back, which keeps only the broad light (the lamp glow, the darker edges).
+    const shrink = (src, f) => {
+      const c = document.createElement('canvas');
+      c.width = Math.max(2, Math.round(src.width / f));
+      c.height = Math.max(2, Math.round(src.height / f));
+      const x = c.getContext('2d');
+      x.imageSmoothingQuality = 'high';
+      x.drawImage(src, 0, 0, c.width, c.height);
+      return c;
+    };
+    const tiny = shrink(shrink(small, 3), 3);
+    const mid = document.createElement('canvas');
+    mid.width = sw;
+    mid.height = sh;
+    const mctx = mid.getContext('2d');
+    mctx.imageSmoothingQuality = 'high';
+    mctx.drawImage(tiny, 0, 0, sw, sh);
+    ctx.drawImage(mid, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL);
+    ctx.drawImage(mid, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
+    const tex = new THREE.CanvasTexture(cv);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    return tex;
+  }
   ctx.drawImage(small, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL); // above the picture: more of the same wall
   ctx.drawImage(small, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
   // The painting itself over the fill wherever the wall is clear, faded in at its top and bottom.
@@ -473,7 +499,7 @@ export function mountRoom(canvas, { lite = false, onReady, onLayout, onFail } = 
 
     const wall = (key, corners) => {
       const r = WALLS[key];
-      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? backWallTexture(img) : wallTexture(img, r) }));
+      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? backWallTexture(img, lite) : wallTexture(img, r) }));
     };
     wall('back', [[LEFT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z]]);
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
