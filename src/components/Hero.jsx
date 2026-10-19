@@ -70,6 +70,11 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     // picture shown while it loads is framed the same way.
     introRef.current = room.clientWidth <= 640 && !navigator.connection?.saveData && !matchMedia('(prefers-reduced-motion: reduce)').matches;
     fit();
+    // The room opens straight onto the 3D scene: the flat picture (and its
+    // hotspots) stay hidden while it loads, and only come in if it can't run.
+    if (!navigator.connection?.saveData) {
+      frameRefs.current.forEach((el) => el && Object.assign(el.style, { transition: 'none', opacity: 0 }));
+    }
     const ro = new ResizeObserver(fit);
     ro.observe(room);
     return () => ro.disconnect();
@@ -102,6 +107,14 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const lite = touch || (shortSide > 0 && shortSide <= 820) || (navigator.deviceMemory || 8) <= 4;
     const follow = !reduce && !touch;
 
+    const [imageFrame, hotFrame] = frameRefs.current;
+    const reveal = (el) => Object.assign(el.style, { transition: 'opacity .9s ease', opacity: '' });
+    // On a very slow connection, the picture comes in rather than leaving an empty room.
+    const slow = setTimeout(() => {
+      reveal(imageFrame);
+      reveal(hotFrame);
+    }, 8000);
+
     // Until the 3D room is up (or if it can't run), the flat image drifts instead.
     let live = false, scene = null;
     let tx = 0, ty = 0, cx = 0, cy = 0, raf = 0;
@@ -130,6 +143,9 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       introRef.current = false;
       fitRef.current();
       canvas.style.opacity = 0;
+      clearTimeout(slow);
+      reveal(imageFrame);
+      reveal(hotFrame);
       hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, h.rect));
     };
 
@@ -205,6 +221,8 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
           room.style.transform = 'translate3d(-50%,-50%,0)';
           room.style.touchAction = 'none';
           canvas.style.opacity = 1;
+          clearTimeout(slow);
+          reveal(hotFrame);
         },
         onLayout: (rects) => hotspots.forEach((h, i) => hotRefs.current[i] && Object.assign(hotRefs.current[i].style, rects[h.key])),
         onFail: flat,
@@ -212,6 +230,10 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         intro: introRef.current
       });
       if (introRef.current) canvas.style.transition = 'opacity .45s ease';
+    } else {
+      clearTimeout(slow);
+      reveal(imageFrame);
+      reveal(hotFrame);
     }
     if (follow) addEventListener('pointermove', onMove, { passive: true });
     room.addEventListener('pointerdown', onDown);
@@ -228,6 +250,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
       removeEventListener('pointercancel', onUp);
       room.removeEventListener('click', onClick, true);
       room.removeEventListener('gesturestart', noPageZoom);
+      clearTimeout(slow);
       cancelAnimationFrame(raf);
       sceneRef.current = null;
       scene?.destroy();
