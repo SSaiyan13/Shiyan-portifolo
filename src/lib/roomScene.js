@@ -79,6 +79,45 @@ const BASS_MOVE = [-0.122, 0, 0.05];
 // size) on a card standing where the bass stands, at depth z.
 const BASS_CARD = { src: '/assets/bass-cut.webp', x: 1220, y: 340, w: 270, h: 660, z: 0 };
 
+// Shader pieces that paint room.png onto the furniture (see mountRoom). A
+// fragment the painting saw (no nearer furniture in the painting's depth map)
+// shows the painting's colour; any other keeps its lit colour, with a short blend.
+const PAINT_HEAD = `
+uniform sampler2D uPaint;
+uniform sampler2D uPaintDepth;
+uniform float uPaintNear;
+uniform float uPaintFar;
+varying vec4 vPaint;
+float paintDepth(float d) {
+  float z = d * 2.0 - 1.0;
+  return 2.0 * uPaintNear * uPaintFar / (uPaintFar + uPaintNear - z * (uPaintFar - uPaintNear));
+}
+`;
+const PAINT_BODY = `
+{
+  vec3 pn = vPaint.xyz / vPaint.w;
+  vec2 puv = pn.xy * 0.5 + 0.5;
+  if (vPaint.w > 0.0 && all(greaterThan(puv, vec2(0.001))) && all(lessThan(puv, vec2(0.999)))) {
+    float seen = paintDepth(texture2D(uPaintDepth, puv).r);
+    float here = paintDepth(pn.z * 0.5 + 0.5);
+    float vis = 1.0 - smoothstep(0.004, 0.015, here - seen);
+    gl_FragColor.rgb = mix(gl_FragColor.rgb, texture2D(uPaint, puv).rgb, vis);
+  }
+}
+`;
+
+// Posters on the back wall above the desk: two rows of three, all 2:3 and the
+// same size. Placed in room.png pixels: the grid's top-left corner, one poster's
+// width and the gap between them. `lightRef` is the wall colour a poster shows
+// at full brightness; darker wall dims it in proportion.
+const POSTERS = {
+  files: ['spider-verse', 'dark-knight', 'uncharted', 'haikyuu', 'rooftop', 'leo'].map((n) => `/assets/poster-${n}.webp`),
+  // Below where the desktop header ends (about y 188) and over the laptop, whose
+  // screen hides the bottom row's last few pixels like a real monitor would.
+  x: 676, y: 192, w: 62, gap: 9,
+  lightRef: 125
+};
+
 // Camera movement. Dragging pans the view across the painting (it can reach the
 // painting's edges, and stretches a little past them) and turns the camera a
 // little; letting go eases it back. Pinching zooms in around the fingers, and a
@@ -185,6 +224,36 @@ function backWallTexture(img, smooth = false) {
   }
   sctx.putImageData(data, 0, 0);
 
+  // The fill shrunk right down and grown back: only the broad light is left (the
+  // lamp glow, the darker edges). `light` reads it, to light the posters by.
+  const shrink = (src, f) => {
+    const c = document.createElement('canvas');
+    c.width = Math.max(2, Math.round(src.width / f));
+    c.height = Math.max(2, Math.round(src.height / f));
+    const x = c.getContext('2d');
+    x.imageSmoothingQuality = 'high';
+    x.drawImage(src, 0, 0, c.width, c.height);
+    return c;
+  };
+  const tiny = shrink(shrink(small, 3), 3);
+  const mid = document.createElement('canvas');
+  mid.width = sw;
+  mid.height = sh;
+  const mctx = mid.getContext('2d', { willReadFrequently: true });
+  mctx.imageSmoothingQuality = 'high';
+  mctx.drawImage(tiny, 0, 0, sw, sh);
+  const glow = mctx.getImageData(0, 0, sw, sh).data;
+  // The wall's colour (0-255 RGB) at a point of room.png, smoothly interpolated.
+  const light = (x, y) => {
+    const fx = clamp((x - x0) / CELL - 0.5, 0, sw - 1), fy = clamp(y / CELL - 0.5, 0, sh - 1);
+    const i = Math.min(Math.floor(fx), sw - 2), j = Math.min(Math.floor(fy), sh - 2);
+    const u = fx - i, t = fy - j;
+    return [0, 1, 2].map((c) => {
+      const p = (a, b) => glow[(b * sw + a) * 4 + c];
+      return (p(i, j) * (1 - u) + p(i + 1, j) * u) * (1 - t) + (p(i, j + 1) * (1 - u) + p(i + 1, j + 1) * u) * t;
+    });
+  };
+
   const cv = document.createElement('canvas');
   cv.width = w;
   cv.height = WALL_PAD + WALL_ROWS;
@@ -192,29 +261,12 @@ function backWallTexture(img, smooth = false) {
   ctx.imageSmoothingQuality = 'high';
   if (smooth) {
     // Phones see the wall up close, where the pieced-together painting shows its
-    // seams. They get one even wall instead: the fill shrunk right down and grown
-    // back, which keeps only the broad light (the lamp glow, the darker edges).
-    const shrink = (src, f) => {
-      const c = document.createElement('canvas');
-      c.width = Math.max(2, Math.round(src.width / f));
-      c.height = Math.max(2, Math.round(src.height / f));
-      const x = c.getContext('2d');
-      x.imageSmoothingQuality = 'high';
-      x.drawImage(src, 0, 0, c.width, c.height);
-      return c;
-    };
-    const tiny = shrink(shrink(small, 3), 3);
-    const mid = document.createElement('canvas');
-    mid.width = sw;
-    mid.height = sh;
-    const mctx = mid.getContext('2d');
-    mctx.imageSmoothingQuality = 'high';
-    mctx.drawImage(tiny, 0, 0, sw, sh);
+    // seams. They get the one even wall instead.
     ctx.drawImage(mid, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL);
     ctx.drawImage(mid, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
     const tex = new THREE.CanvasTexture(cv);
     tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
+    return { tex, light };
   }
   ctx.drawImage(small, 0, 0, sw, 1, 0, 0, w, WALL_PAD + CELL); // above the picture: more of the same wall
   ctx.drawImage(small, 0, 0, sw, sh, 0, WALL_PAD, w, WALL_ROWS);
@@ -239,7 +291,7 @@ function backWallTexture(img, smooth = false) {
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
-  return tex;
+  return { tex, light };
 }
 
 function wallTexture(img, { x0, x1, clean }) {
@@ -518,15 +570,54 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
   const loadModel = loader.loadAsync(lite ? '/assets/room-3d-lite.glb' : '/assets/room-3d.glb');
   // If the cut-out can't load, the 3D bass stays instead.
   const loadBass = new THREE.TextureLoader().loadAsync(BASS_CARD.src).catch(() => null);
+  // A poster that can't load is just left off the wall.
+  const loadPosters = Promise.all(POSTERS.files.map((f) => new THREE.TextureLoader().loadAsync(f).catch(() => null)));
 
-  Promise.all([loadImage, loadModel, loadBass]).then(([img, gltf, bassTex]) => {
+  Promise.all([loadImage, loadModel, loadBass, loadPosters]).then(([img, gltf, bassTex, posterTexs]) => {
     if (destroyed) return;
 
+    const back = backWallTexture(img, lite);
     const wall = (key, corners) => {
       const r = WALLS[key];
-      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? backWallTexture(img, lite) : wallTexture(img, r) }));
+      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? back.tex : wallTexture(img, r) }));
     };
     wall('back', [[LEFT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z]]);
+
+    // Where a point of room.png falls on the plane z, seen from the reference camera.
+    const onPlane = (px, py, z) => {
+      const d = fromPx(px, py);
+      const k = (z - CAM_POS.z) / d.z;
+      return [CAM_POS.x + d.x * k, CAM_POS.y + d.y * k, z];
+    };
+
+    // The posters, hung just off the back wall. Each is lit by the wall behind it
+    // (vertex colours from the wall's own colour), so it dims and warms the way the
+    // wall does instead of glowing at full brightness in a dark room.
+    const posterZ = BACK_Z + 0.004;
+    posterTexs.forEach((tex, n) => {
+      if (!tex) return;
+      const { x: gx, y: gy, w, gap } = POSTERS;
+      const h = w * 1.5;
+      const x = gx + (n % 3) * (w + gap), y = gy + Math.floor(n / 3) * (h + gap);
+      const geo = quad([onPlane(x, y, posterZ), onPlane(x + w, y, posterZ), onPlane(x + w, y + h, posterZ), onPlane(x, y + h, posterZ)], (p, s, t) => [s, 1 - t], 6);
+      const pos = geo.getAttribute('position'), colors = [];
+      for (let i = 0; i < pos.count; i++) {
+        const [px, py] = toPx(v.fromBufferAttribute(pos, i));
+        colors.push(...back.light(px, py).map((c) => clamp(c / POSTERS.lightRef, 0.15, 1.05) ** 2.2));
+      }
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 4;
+      const mat = new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, toneMapped: false });
+      disposables.push(geo, mat, tex);
+      scene.add(new THREE.Mesh(geo, mat));
+      // A soft shadow a little below and to the right, where the lamp throws it.
+      const sh = 6;
+      const shadowGeo = quad([onPlane(x + sh, y + sh, posterZ - 0.002), onPlane(x + w + sh, y + sh, posterZ - 0.002), onPlane(x + w + sh, y + h + sh, posterZ - 0.002), onPlane(x + sh, y + h + sh, posterZ - 0.002)], (p, s, t) => [s, 1 - t], 1);
+      const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false });
+      disposables.push(shadowGeo, shadowMat);
+      scene.add(new THREE.Mesh(shadowGeo, shadowMat));
+    });
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
     wall('right', [[RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, BACK_Z]]);
 
@@ -610,12 +701,7 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       // z = BASS_CARD.z, as seen from the reference camera, so at rest it lines up
       // with the painting exactly. It moves with the bass, which it replaces.
       const { x, y, w, h, z } = BASS_CARD;
-      const onPlane = (px, py) => {
-        const d = fromPx(px, py);
-        const k = (z - CAM_POS.z) / d.z;
-        return [CAM_POS.x + d.x * k, CAM_POS.y + d.y * k, z];
-      };
-      const geo = quad([onPlane(x, y), onPlane(x + w, y), onPlane(x + w, y + h), onPlane(x, y + h)], (p) => {
+      const geo = quad([onPlane(x, y, z), onPlane(x + w, y, z), onPlane(x + w, y + h, z), onPlane(x, y + h, z)], (p) => {
         const [px, py] = toPx(p);
         return [(px - x) / w, 1 - (py - y) / h];
       }, 8);
@@ -640,6 +726,48 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
     const fill = new THREE.DirectionalLight(LIGHTS.fill[0], LIGHTS.fill[1]);
     fill.position.set(LIGHTS.fill[2], LIGHTS.fill[3], LIGHTS.fill[4]);
     scene.add(fill);
+
+    // The furniture shows the drawing itself wherever the painting saw it: room.png
+    // is projected onto it from the painting's viewpoint, so at rest the desk, lamp,
+    // books, plants, drawers, chair and bed look exactly as drawn. Surfaces the
+    // painting never showed (sides that turn into view on a drag, parts behind the
+    // chair) keep the model's own lit texture. Which surfaces the painting saw is
+    // worked out once, from a depth render of the furniture alone from that viewpoint.
+    const dw = lite ? 1024 : 2048, dh = Math.round(dw / aspect);
+    const depthRT = new THREE.WebGLRenderTarget(dw, dh, { depthTexture: new THREE.DepthTexture(dw, dh) });
+    const depthOnly = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false });
+    disposables.push(depthRT, depthOnly);
+    const others = scene.children.filter((o) => o !== gltf.scene && o.visible);
+    others.forEach((o) => (o.visible = false));
+    scene.overrideMaterial = depthOnly;
+    renderer.setRenderTarget(depthRT);
+    renderer.render(scene, refCam);
+    renderer.setRenderTarget(null);
+    scene.overrideMaterial = null;
+    others.forEach((o) => (o.visible = true));
+    // room.png as stored (no colour decoding), since it's written out as is.
+    const raw = new THREE.Texture(img);
+    raw.anisotropy = 4;
+    raw.needsUpdate = true;
+    disposables.push(raw);
+    const painted = {
+      uPaint: { value: raw },
+      uPaintDepth: { value: depthRT.depthTexture },
+      uPaintMat: { value: new THREE.Matrix4().multiplyMatrices(refCam.projectionMatrix, refCam.matrixWorldInverse) },
+      uPaintNear: { value: refCam.near },
+      uPaintFar: { value: refCam.far }
+    };
+    gltf.scene.traverse((o) => {
+      if (!o.isMesh || !o.material) return;
+      o.material.onBeforeCompile = (s) => {
+        Object.assign(s.uniforms, painted);
+        s.vertexShader = 'uniform mat4 uPaintMat;\nvarying vec4 vPaint;\n' +
+          s.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vPaint = uPaintMat * modelMatrix * vec4(transformed, 1.0);');
+        s.fragmentShader = PAINT_HEAD + s.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n' + PAINT_BODY);
+      };
+      o.material.customProgramCacheKey = () => 'painted';
+      o.material.needsUpdate = true;
+    });
 
     ready = true;
     draw();
