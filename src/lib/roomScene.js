@@ -79,33 +79,6 @@ const BASS_MOVE = [-0.122, 0, 0.05];
 // size) on a card standing where the bass stands, at depth z.
 const BASS_CARD = { src: '/assets/bass-cut.webp', x: 1220, y: 340, w: 270, h: 660, z: 0 };
 
-// Shader pieces that paint room.png onto the furniture (see mountRoom). A
-// fragment the painting saw (no nearer furniture in the painting's depth map)
-// shows the painting's colour; any other keeps its lit colour, with a short blend.
-const PAINT_HEAD = `
-uniform sampler2D uPaint;
-uniform sampler2D uPaintDepth;
-uniform float uPaintNear;
-uniform float uPaintFar;
-varying vec4 vPaint;
-float paintDepth(float d) {
-  float z = d * 2.0 - 1.0;
-  return 2.0 * uPaintNear * uPaintFar / (uPaintFar + uPaintNear - z * (uPaintFar - uPaintNear));
-}
-`;
-const PAINT_BODY = `
-{
-  vec3 pn = vPaint.xyz / vPaint.w;
-  vec2 puv = pn.xy * 0.5 + 0.5;
-  if (vPaint.w > 0.0 && all(greaterThan(puv, vec2(0.001))) && all(lessThan(puv, vec2(0.999)))) {
-    float seen = paintDepth(texture2D(uPaintDepth, puv).r);
-    float here = paintDepth(pn.z * 0.5 + 0.5);
-    float vis = 1.0 - smoothstep(0.004, 0.015, here - seen);
-    gl_FragColor.rgb = mix(gl_FragColor.rgb, texture2D(uPaint, puv).rgb, vis);
-  }
-}
-`;
-
 // Posters on the back wall above the desk: two rows of three, all 2:3 and the
 // same size. Placed in room.png pixels: the grid's top-left corner, one poster's
 // width and the gap between them. `lightRef` is the wall colour a poster shows
@@ -726,48 +699,6 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
     const fill = new THREE.DirectionalLight(LIGHTS.fill[0], LIGHTS.fill[1]);
     fill.position.set(LIGHTS.fill[2], LIGHTS.fill[3], LIGHTS.fill[4]);
     scene.add(fill);
-
-    // The furniture shows the drawing itself wherever the painting saw it: room.png
-    // is projected onto it from the painting's viewpoint, so at rest the desk, lamp,
-    // books, plants, drawers, chair and bed look exactly as drawn. Surfaces the
-    // painting never showed (sides that turn into view on a drag, parts behind the
-    // chair) keep the model's own lit texture. Which surfaces the painting saw is
-    // worked out once, from a depth render of the furniture alone from that viewpoint.
-    const dw = lite ? 1024 : 2048, dh = Math.round(dw / aspect);
-    const depthRT = new THREE.WebGLRenderTarget(dw, dh, { depthTexture: new THREE.DepthTexture(dw, dh) });
-    const depthOnly = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide, colorWrite: false });
-    disposables.push(depthRT, depthOnly);
-    const others = scene.children.filter((o) => o !== gltf.scene && o.visible);
-    others.forEach((o) => (o.visible = false));
-    scene.overrideMaterial = depthOnly;
-    renderer.setRenderTarget(depthRT);
-    renderer.render(scene, refCam);
-    renderer.setRenderTarget(null);
-    scene.overrideMaterial = null;
-    others.forEach((o) => (o.visible = true));
-    // room.png as stored (no colour decoding), since it's written out as is.
-    const raw = new THREE.Texture(img);
-    raw.anisotropy = 4;
-    raw.needsUpdate = true;
-    disposables.push(raw);
-    const painted = {
-      uPaint: { value: raw },
-      uPaintDepth: { value: depthRT.depthTexture },
-      uPaintMat: { value: new THREE.Matrix4().multiplyMatrices(refCam.projectionMatrix, refCam.matrixWorldInverse) },
-      uPaintNear: { value: refCam.near },
-      uPaintFar: { value: refCam.far }
-    };
-    gltf.scene.traverse((o) => {
-      if (!o.isMesh || !o.material) return;
-      o.material.onBeforeCompile = (s) => {
-        Object.assign(s.uniforms, painted);
-        s.vertexShader = 'uniform mat4 uPaintMat;\nvarying vec4 vPaint;\n' +
-          s.vertexShader.replace('#include <project_vertex>', '#include <project_vertex>\n  vPaint = uPaintMat * modelMatrix * vec4(transformed, 1.0);');
-        s.fragmentShader = PAINT_HEAD + s.fragmentShader.replace('#include <dithering_fragment>', '#include <dithering_fragment>\n' + PAINT_BODY);
-      };
-      o.material.customProgramCacheKey = () => 'painted';
-      o.material.needsUpdate = true;
-    });
 
     ready = true;
     draw();
