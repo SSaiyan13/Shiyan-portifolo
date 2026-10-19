@@ -93,7 +93,9 @@ export function startWorkBow(THREE) {
 
   function resize() {
     W = innerWidth; H = innerHeight;
-    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+    // The canvas covers the whole screen but only ever shows images in motion,
+    // where 1.5x is as sharp as the eye can tell and much cheaper than 2x or 3x.
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
     renderer.setSize(W, H, false);
     camera.left = -W / 2; camera.right = W / 2;
     camera.top = H / 2; camera.bottom = -H / 2;
@@ -145,15 +147,20 @@ export function startWorkBow(THREE) {
     mesh.frustumCulled = false;
     mesh.visible = false;
     scene.add(mesh);
-    const it = { el, mesh, tex: null, ready: false, src: '', card: el.closest('[data-bow-card]'), over: null };
+    // `on` is whether the plane is showing in place of the image; `w`, `h` the
+    // overlay's last size, so it is only resized when that changes.
+    const it = { el, mesh, tex: null, ready: false, src: '', card: el.closest('[data-bow-card]'), over: null, on: false, w: 0, h: 0 };
     if (it.card) {
       // Everything in the card except the image itself, to sit above the canvas.
+      // Blurs and transitions are left off the copy: they cost a lot to redraw
+      // while it moves, and nobody can see them mid-scroll.
       it.over = it.card.cloneNode(true);
       it.over.querySelectorAll('img').forEach((img) => img.remove());
+      it.over.querySelectorAll('*').forEach((n) => Object.assign(n.style, { backdropFilter: 'none', webkitBackdropFilter: 'none', transition: 'none' }));
       for (const a of ['data-reveal', 'role', 'tabindex']) it.over.removeAttribute(a);
       it.over.setAttribute('aria-hidden', 'true');
       it.over.inert = true;
-      Object.assign(it.over.style, { position: 'absolute', margin: 0, display: 'none', background: 'none', borderColor: 'transparent', opacity: 1, transform: 'none' });
+      Object.assign(it.over.style, { position: 'absolute', left: 0, top: 0, margin: 0, display: 'none', background: 'none', borderColor: 'transparent', opacity: 1, transform: 'none', transition: 'none', willChange: 'transform' });
       overlays.appendChild(it.over);
     }
     items.push(it);
@@ -174,6 +181,8 @@ export function startWorkBow(THREE) {
       it.tex = t;
       it.mesh.material.uniforms.uTex.value = t;
       it.mesh.material.uniforms.uTexAspect.value = (t.image.width || 1) / (t.image.height || 1);
+      // Upload it to the GPU now, so the first scroll doesn't stall on it.
+      renderer.initTexture(t);
       it.ready = true;
     });
   }
@@ -189,14 +198,32 @@ export function startWorkBow(THREE) {
            Math.abs(v[1]) < 0.002 && Math.abs(v[2]) < 0.002;
   }
 
+  // Puts an image back (or takes it away) in place of its plane.
+  function show(it, on) {
+    if (it.on === on) return;
+    it.on = on;
+    it.mesh.visible = on;
+    it.el.style.opacity = on ? '0' : '';
+    if (it.over) it.over.style.display = on ? '' : 'none';
+  }
+
+  // While the page is still, a frame only reads the scroll position: no
+  // measuring, no drawing. Measuring happens once per frame while it bends, all
+  // reads before all writes, so the browser never has to lay the page out twice.
+  let bending = false;
   function frame(now) {
     raf = requestAnimationFrame(frame);
     if (tick++ % 20 === 0) sync();
-    if (!items.length) { renderer.clear(); return; }
+    if (!items.length) {
+      if (bending) {
+        bending = false;
+        eased = 0;
+        renderer.clear();
+      }
+      return;
+    }
 
     const panel = items[0].el.closest('[data-panel]');
-    const live = !!panel && identity(panel);
-
     const sc = panel ? panel.querySelector('[data-scroller]') : null;
     const top = sc ? sc.scrollTop : (scrollY || 0);
     const dt = lastT ? Math.min((now - lastT) / 1000, 0.05) : 0;
@@ -207,31 +234,52 @@ export function startWorkBow(THREE) {
     const sgn = vel < 0 ? -1 : 1;
     let target = sgn * Math.sqrt(Math.abs(vel)) * CFG.curveK;
     target = Math.max(-CFG.maxCurve, Math.min(CFG.maxCurve, target));
-    if (!live) target = 0;
     eased += (target - eased) * (Math.abs(target) > Math.abs(eased) ? CFG.attack : CFG.release);
     if (Math.abs(eased) < 0.00005) eased = 0;
+    // Only bend while the panel sits still on screen, not while it animates open or closed.
+    if (eased && !(panel && identity(panel))) eased = 0;
 
-    let clipTop = 0;
-    if (panel) {
-      const hd = panel.querySelector('[data-scroller] > div');
-      if (hd) { const hr = hd.getBoundingClientRect(); if (hr.top <= 1) clipTop = hr.bottom; }
+    if (Math.abs(eased) <= 0.0008) {
+      if (bending) {
+        bending = false;
+        for (const it of items) show(it, false);
+        renderer.clear();
+      }
+      return;
+    }
+    if (!bending) {
+      // Starting to bend: take each image's current tint once, not every frame.
+      bending = true;
+      for (const it of items) {
+        const filter = getComputedStyle(it.el).filter;
+        const u = it.mesh.material.uniforms;
+        u.uSat.value = Number(/saturate\(([\d.]+)\)/.exec(filter)?.[1] ?? 1);
+        u.uBright.value = Number(/brightness\(([\d.]+)\)/.exec(filter)?.[1] ?? 1);
+      }
     }
 
-    const moving = Math.abs(eased) > 0.0008;
-    overlays.style.clipPath = clipTop ? `inset(${clipTop}px 0 0 0)` : '';
+    // Reads.
+    let clipTop = 0;
+    const hd = panel ? panel.querySelector('[data-scroller] > div') : null;
+    if (hd) { const hr = hd.getBoundingClientRect(); if (hr.top <= 1) clipTop = hr.bottom; }
+    const rects = items.map((it) => (it.card || it.el).getBoundingClientRect());
 
-    for (const it of items) {
+    // Writes.
+    overlays.style.clipPath = clipTop ? `inset(${clipTop}px 0 0 0)` : '';
+    items.forEach((it, i) => {
+      const r = rects[i];
+      const on = it.ready && r.width > 2 && r.height > 2 && r.bottom > -80 && r.top < H + 80;
+      show(it, on);
+      if (!on) return;
+      if (it.over) {
+        if (it.w !== r.width || it.h !== r.height) {
+          it.w = r.width;
+          it.h = r.height;
+          Object.assign(it.over.style, { width: `${r.width}px`, height: `${r.height}px` });
+        }
+        it.over.style.transform = `translate3d(${r.left}px,${r.top}px,0)`;
+      }
       const m = it.mesh, u = m.material.uniforms;
-      const r = (it.card || it.el).getBoundingClientRect();
-      const on = live && it.ready && r.width > 2 && r.height > 2 && r.bottom > -80 && r.top < H + 80;
-      m.visible = on && moving;
-      it.el.style.opacity = (on && moving) ? '0' : '';
-      if (it.over) it.over.style.display = m.visible ? '' : 'none';
-      if (!m.visible) continue;
-      if (it.over) Object.assign(it.over.style, { left: `${r.left}px`, top: `${r.top}px`, width: `${r.width}px`, height: `${r.height}px` });
-      const filter = getComputedStyle(it.el).filter;
-      u.uSat.value = Number(/saturate\(([\d.]+)\)/.exec(filter)?.[1] ?? 1);
-      u.uBright.value = Number(/brightness\(([\d.]+)\)/.exec(filter)?.[1] ?? 1);
       m.scale.set(r.width, r.height, 1);
       m.position.x = r.left + r.width / 2 - W / 2;
       m.position.y = -(r.top + r.height / 2) + H / 2;
@@ -239,7 +287,7 @@ export function startWorkBow(THREE) {
       u.uVelocity.value = eased;
       u.uClipTop.value = clipTop;
       u.uH.value = H;
-    }
+    });
     renderer.render(scene, camera);
   }
 
