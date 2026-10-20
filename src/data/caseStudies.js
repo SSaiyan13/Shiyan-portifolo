@@ -8,8 +8,6 @@
 //   { cards: [[title, text]] }    a grid of small cards
 //   { table: { head, rows, highlight } }   a table; `highlight` is a row index
 //   { embed: { src, href, label } }        slides shown in place, with a link out
-// Drafted from the Devpost write-ups: anything marked "check" in the summary for
-// the owner should be confirmed before it's treated as final.
 
 export const caseStudies = {
   launchpath: {
@@ -19,9 +17,9 @@ export const caseStudies = {
     image: '/assets/work-launchpath.png',
     alt: 'LaunchPath pitch deck title slide',
     overview: {
-      role: 'Product Manager & UX Designer',
+      role: 'Building the Figma prototype and our video submission',
       timeline: 'Mar 21–22, 2026 · ProduHacks',
-      team: '4 people: Min Li Wang, Lynn Vu, Owen Li and me',
+      team: 'Min Li Wang, Lynn Vu, Owen Li and me',
       skills: ['Problem framing', 'Positioning', 'Feature prioritisation', 'UX design', 'Figma', 'Figma Make', 'Prototyping', 'Pitching'],
       awards: [],
       links: [
@@ -105,8 +103,8 @@ export const caseStudies = {
     image: '/assets/work-jolty.png',
     alt: 'Jolty solution slide showing the app onboarding screen',
     overview: {
-      role: 'Product Manager & UX Designer',
-      timeline: '12-hour sprint',
+      role: 'Slide building, user personas, user research and building the prototype',
+      timeline: 'Jan 10–11, 2026 · 12-hour sprint',
       team: '5 people',
       skills: ['User research', 'Survey design', 'MVP scoping', 'Behaviour design', 'Figma', 'Prototyping', 'Pitching'],
       awards: ['1st place overall @ Producathon'],
@@ -187,13 +185,13 @@ export const caseStudies = {
     image: '/assets/work-planless.png',
     alt: 'Planless concept slide: why does taking a break take work?',
     overview: {
-      role: 'Product Manager & UX Designer',
-      timeline: 'UXathon 2026',
-      team: '4 people: Renata Lawrence, Avia Wen, Dayson How and me',
+      role: 'User journey and personas, user research, and building and debugging the prototype',
+      timeline: 'Jan 10–11, 2026 · UXathon',
+      team: 'Renata Lawrence, Avia Wen, Dayson How and me',
       skills: ['Problem framing', 'User flows', 'Interaction design', 'Figma', 'Prototyping', 'Presenting'],
       awards: ['2nd place, Beginner Stream @ UBC UX Hub UXathon 2026'],
       links: [
-        ['Figma prototype', 'https://www.figma.com/proto/xedceibnGk7RSqInhpC993/Planless?starting-point-node-id=2%3A6184'],
+        ['Figma prototype', 'https://www.figma.com/proto/xedceibnGk7RSqInhpC993/Planless?page-id=0%3A1&node-id=2-6184&content-scaling=fixed&starting-point-node-id=2%3A6184&t=nFyzTpAZDUoi9dGE-1'],
         ['Slides', 'https://www.canva.com/design/DAG-FCq1CAY/U-8hhDKGs5JkyU-07fFTYg/view'],
         ['Devpost', 'https://devpost.com/software/uxathon-plan-less']
       ]

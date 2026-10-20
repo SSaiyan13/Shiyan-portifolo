@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useRef, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import PanelHeader from '../PanelHeader.jsx';
 import CaseStudy from '../CaseStudy.jsx';
 import { workProjects } from '../../data/work.js';
@@ -10,9 +10,21 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
   // The open case study, if any, and the card that opened it (focus goes back there).
   const [caseId, setCaseId] = useState(null);
   const openerRef = useRef(null);
-  const closeCase = useCallback(() => {
-    setCaseId(null);
-    requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+  // Opening a case study adds a history step, so the phone's back gesture closes
+  // it instead of leaving the site; closing it from the page steps back again.
+  const openCase = (id, el) => {
+    openerRef.current = el;
+    history.pushState({ caseId: id }, '');
+    setCaseId(id);
+  };
+  const closeCase = useCallback(() => history.back(), []);
+  useEffect(() => {
+    const onBack = () => {
+      setCaseId(null);
+      requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+    };
+    addEventListener('popstate', onBack);
+    return () => removeEventListener('popstate', onBack);
   }, []);
 
   return (
@@ -26,7 +38,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
         willChange: 'transform,opacity,filter'
       }}
     >
-      <div data-scroller="" style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+      <div data-scroller="" inert={caseId ? true : undefined} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <PanelHeader label="Technical Projects" closeRef={closeRef} onClose={onClose} />
 
         <div data-panelhead="" style={{ padding: 'clamp(48px,9vh,110px) clamp(18px,3.2vw,44px) clamp(34px,5vh,64px)', maxWidth: 1500 }}>
@@ -54,15 +66,17 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
                 <span style={{ fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', lineHeight: 1.36, letterSpacing: '-.01em', color: 'rgba(247,240,240,.66)', maxWidth: '32ch', textWrap: 'pretty' }}>
                   {p.subtitle}
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 'clamp(6px,1vh,12px)', fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: p.caseId ? '#E0A6BE' : '#84828F' }}>
-                  {p.caseId ? 'Read the case study' : p.linkLabel} <span data-workarrow="" style={{ opacity: 0.5, transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)' }}>{p.caseId ? '→' : '↗'}</span>
-                </span>
+                {!p.caseId && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 'clamp(6px,1vh,12px)', fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F' }}>
+                    {p.linkLabel} <span data-workarrow="" style={{ opacity: 0.5, transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)' }}>↗</span>
+                  </span>
+                )}
               </span>
             );
             // Projects with a case study open it here; the rest link out.
             const Card = p.caseId ? 'button' : 'a';
             const action = p.caseId
-              ? { type: 'button', onClick: (e) => { openerRef.current = e.currentTarget; setCaseId(p.caseId); } }
+              ? { type: 'button', onClick: (e) => openCase(p.caseId, e.currentTarget) }
               : { href: p.href, target: '_blank', rel: 'noopener noreferrer' };
             return (
               <Card

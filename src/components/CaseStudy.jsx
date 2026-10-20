@@ -35,12 +35,20 @@ export default function CaseStudy({ study, onClose }) {
   // Light the nav link for whichever section crosses the upper third of the screen.
   useEffect(() => {
     const sc = scrollerRef.current;
+    // The last section is too short to reach that line, so the bottom of the page lights it.
+    const last = study.sections[study.sections.length - 1]?.id;
+    const atBottom = () => last && sc.scrollTop + sc.clientHeight >= sc.scrollHeight - 4;
     const io = new IntersectionObserver(
-      (entries) => entries.forEach((en) => en.isIntersecting && setActive(en.target.id.replace('cs-', ''))),
+      (entries) => entries.forEach((en) => en.isIntersecting && setActive(atBottom() ? last : en.target.id.replace('cs-', ''))),
       { root: sc, rootMargin: '-25% 0px -65% 0px' }
     );
     sc.querySelectorAll('[data-cs-section]').forEach((el) => io.observe(el));
-    return () => io.disconnect();
+    const onScroll = () => atBottom() && setActive(last);
+    sc.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      io.disconnect();
+      sc.removeEventListener('scroll', onScroll);
+    };
   }, [study]);
 
   const jump = (id) => {
@@ -233,22 +241,13 @@ function Block({ b }) {
   return null;
 }
 
-// Slides load only when asked for: the embed is a whole third-party app, so it
-// shouldn't slow the case study down for people who just want to read.
+// The slides load by themselves as the reader scrolls near them (`loading="lazy"`),
+// so the rest of the case study isn't held up by a whole third-party app.
 function Slides({ src, href, label }) {
-  const [on, setOn] = useState(false);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
       <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: 'radial-gradient(120% 140% at 20% 0%,rgba(92,0,41,.4) 0%,rgba(11,13,12,1) 70%)' }}>
-        {on ? (
-          <iframe src={src} title={label} allowFullScreen loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
-        ) : (
-          <button onClick={() => setOn(true)} style={{ position: 'absolute', inset: 0, display: 'grid', placeItems: 'center', width: '100%' }}>
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 10, padding: '15px 22px', border: '1px solid rgba(247,240,240,.3)', borderRadius: 999, fontSize: 10.5, letterSpacing: '.2em', textTransform: 'uppercase', background: 'rgba(11,13,12,.5)' }}>
-              <span aria-hidden="true" style={{ color: PINK }}>▶</span> View the slides here
-            </span>
-          </button>
-        )}
+        <iframe src={src} title={label} allowFullScreen loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
       </div>
       <a href={href} target="_blank" rel="noopener noreferrer" style={{ alignSelf: 'flex-start', fontSize: 10, letterSpacing: '.22em', textTransform: 'uppercase', color: GREY }}>
         Open {label} in a new tab <span aria-hidden="true">↗</span>
