@@ -108,7 +108,10 @@ const MEMORIES = {
 // offset and size, with the wall cut away) on a card just in front of the model's.
 const CARDS = [
   { src: '/assets/shelf-cut.webp', x: 398, y: 330, w: 236, h: 130, z: -0.16 }, // shelf: plant, books, camera
-  { src: '/assets/plant-cut.webp', x: 1115, y: 485, w: 97, h: 99, z: -0.08 } // plant beside the portrait
+  // The plant beside the portrait: the 3D desk is shorter than the drawn one, so
+  // it stands where the model put its plant (a little left of the drawing's),
+  // pot on the 3D desk, and slightly larger so it hides the model's plant.
+  { src: '/assets/plant-cut.webp', x: 1052, y: 456, w: 104, h: 106, z: -0.08 }
 ];
 
 // Camera movement. Dragging pans the view across the painting (it can reach the
