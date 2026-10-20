@@ -263,7 +263,9 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         ref={roomRef}
         data-room=""
         style={{
-          position: 'absolute', top: '50%', left: '50%', transform: 'translate3d(-50%,-50%,0)',
+          // A little below centre on wide screens, so the wall under the header shows
+          // (the posters live there); the floor gives up the difference.
+          position: 'absolute', top: 'calc(50% + 36px)', left: '50%', transform: 'translate3d(-50%,-50%,0)',
           width: '106vw', aspectRatio: `${IMG_W}/${IMG_H}`, willChange: 'transform', overflow: 'hidden',
           userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'
         }}

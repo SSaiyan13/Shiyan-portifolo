@@ -90,7 +90,8 @@ export const caseStudies = {
         id: 'reflections',
         label: 'Reflections',
         blocks: [
-          { p: 'Who the user is decides everything downstream. Once we stopped designing for “HR” and started designing for one team lead on one Monday morning, the feature list got shorter and the pitch got sharper.' }
+          { p: 'Honestly, the project furthest out of my comfort zone. I learned corporate terms like B2B and SaaS, and what it takes to build a tool that helps with onboarding. With my limited knowledge of that world, I couldn’t fully understand the product at first, and seeing tools built around such a narrow use case made me a little scared that this is what big corporations are really doing.' },
+          { p: 'But being uncomfortable while learning that side made me realize how much room there is for me to grow.' }
         ]
       }
     ]
@@ -172,7 +173,16 @@ export const caseStudies = {
         id: 'reflections',
         label: 'Reflections',
         blocks: [
-          { list: ['Constraints beat features.', 'Behaviour design matters more than the tech stack.', 'A strong narrative wins hackathons.'] }
+          { p: 'This was my first product hackathon, and the first time I learned the product lifecycle properly. I was thinking very technically and had never really considered the business side, and the feedback made that impossible to ignore. It’s pushed me to build up that side of myself, because an ideal PM can do both.' },
+          { p: 'The judges’ main feedback:' },
+          {
+            list: [
+              'How to expand the features beyond the basics.',
+              'How to monetize better.',
+              'Urgency, and a reason to come back. Duolingo came up: people return every day even when they’re not actually learning the language.',
+              'Getting people to take action on their ideas.'
+            ]
+          }
         ]
       }
     ]
@@ -231,6 +241,15 @@ export const caseStudies = {
         id: 'slides',
         label: 'Slides',
         blocks: [{ embed: { src: 'https://www.canva.com/design/DAG-FCq1CAY/U-8hhDKGs5JkyU-07fFTYg/view?embed', href: 'https://www.canva.com/design/DAG-FCq1CAY/U-8hhDKGs5JkyU-07fFTYg/view', label: 'Planless presentation' } }]
+      },
+      {
+        id: 'reflections',
+        label: 'Reflections',
+        blocks: [
+          { p: 'Honestly, my most creative technical product to date. Coming up with the idea was a rollercoaster with my team. So many teams were building apps and websites, and this one made us think outside the box. It was also my longest ideation process ever, but in the best stories, the best ideas come in a time crunch, at random.' },
+          { p: 'With about five hours left before submission, a mentor hit us with hard-hitting questions and scenarios that destroyed our confidence. It taught me the importance of finding a user who wouldn’t use the product, to see its real limits, while still trusting that what we built is great and works. So we kept going: we built a pitch that named the limitations upfront and stopped trying to make the product too broad.' },
+          { quote: 'Funnily enough, that same mentor judged our pitch. This time we were ready, and we held our ground.' }
+        ]
       }
     ]
   }

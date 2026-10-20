@@ -85,11 +85,25 @@ const BASS_CARD = { src: '/assets/bass-cut.webp', x: 1220, y: 340, w: 270, h: 66
 // at full brightness; darker wall dims it in proportion.
 const POSTERS = {
   files: ['spider-verse', 'dark-knight', 'uncharted', 'haikyuu', 'rooftop', 'leo'].map((n) => `/assets/poster-${n}.webp`),
-  // Below where the desktop header ends (about y 188) and over the laptop, whose
-  // screen hides the bottom row's last few pixels like a real monitor would.
-  x: 676, y: 192, w: 62, gap: 9,
+  // Below where the desktop header ends and over the laptop, whose screen hides
+  // the bottom row's last few pixels like a real monitor would.
+  x: 676, y: 200, w: 62, gap: 9,
   lightRef: 125
 };
+
+// Polaroids of the owner's memories, pinned in two loose rows on the wall above
+// the portrait: room.png position of the first one, each one's width (cards are
+// 200x245), the step between them, and a small tilt each so they look pinned by hand.
+const MEMORIES = {
+  files: Array.from({ length: 13 }, (_, i) => `/assets/memory-${String(i + 1).padStart(2, '0')}.webp`),
+  x: 912, y: 222, w: 40, step: 50, rowGap: 58,
+  tilt: [-3, 2, -1.5, 3, -2, 1, -3.5, 2.5, -1, 3, -2.5, 1.5, -2]
+};
+
+// The shelf with the plant, books and camera is drawn from the painting, like the
+// bass: the soft 3D books read as blocky. A cut-out of room.png at this offset and
+// size, with soft edges, on a card standing just in front of the shelf.
+const SHELF_CARD = { src: '/assets/shelf-cut.webp', x: 398, y: 330, w: 236, h: 130, z: -0.16 };
 
 // Camera movement. Dragging pans the view across the painting (it can reach the
 // painting's edges, and stretches a little past them) and turns the camera a
@@ -543,10 +557,13 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
   const loadModel = loader.loadAsync(lite ? '/assets/room-3d-lite.glb' : '/assets/room-3d.glb');
   // If the cut-out can't load, the 3D bass stays instead.
   const loadBass = new THREE.TextureLoader().loadAsync(BASS_CARD.src).catch(() => null);
-  // A poster that can't load is just left off the wall.
-  const loadPosters = Promise.all(POSTERS.files.map((f) => new THREE.TextureLoader().loadAsync(f).catch(() => null)));
+  // A picture that can't load is just left off the wall.
+  const loadAll = (files) => Promise.all(files.map((f) => new THREE.TextureLoader().loadAsync(f).catch(() => null)));
+  const loadPosters = loadAll(POSTERS.files);
+  const loadMemories = loadAll(MEMORIES.files);
+  const loadShelf = new THREE.TextureLoader().loadAsync(SHELF_CARD.src).catch(() => null);
 
-  Promise.all([loadImage, loadModel, loadBass, loadPosters]).then(([img, gltf, bassTex, posterTexs]) => {
+  Promise.all([loadImage, loadModel, loadBass, loadPosters, loadMemories, loadShelf]).then(([img, gltf, bassTex, posterTexs, memoryTexs, shelfTex]) => {
     if (destroyed) return;
 
     const back = backWallTexture(img, lite);
@@ -563,16 +580,20 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       return [CAM_POS.x + d.x * k, CAM_POS.y + d.y * k, z];
     };
 
-    // The posters, hung just off the back wall. Each is lit by the wall behind it
+    // Hangs a picture just off the back wall, over the room.png rectangle (x, y,
+    // w, h) turned `tilt` degrees about its centre. It is lit by the wall behind it
     // (vertex colours from the wall's own colour), so it dims and warms the way the
-    // wall does instead of glowing at full brightness in a dark room.
-    const posterZ = BACK_Z + 0.004;
-    posterTexs.forEach((tex, n) => {
+    // wall does instead of glowing at full brightness in a dark room, and it throws
+    // a soft shadow a little below and to the right, where the lamp sends it.
+    const hang = (tex, x, y, w, h, tilt = 0, shadow = 6) => {
       if (!tex) return;
-      const { x: gx, y: gy, w, gap } = POSTERS;
-      const h = w * 1.5;
-      const x = gx + (n % 3) * (w + gap), y = gy + Math.floor(n / 3) * (h + gap);
-      const geo = quad([onPlane(x, y, posterZ), onPlane(x + w, y, posterZ), onPlane(x + w, y + h, posterZ), onPlane(x, y + h, posterZ)], (p, s, t) => [s, 1 - t], 6);
+      const z = BACK_Z + 0.004, cx = x + w / 2, cy = y + h / 2;
+      const a = (tilt * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
+      const corners = (dx, dz) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].map(([px, py]) => {
+        const rx = px - cx, ry = py - cy;
+        return onPlane(cx + rx * cos - ry * sin + dx, cy + rx * sin + ry * cos + dx, z - dz);
+      });
+      const geo = quad(corners(0, 0), (p, s, t) => [s, 1 - t], 6);
       const pos = geo.getAttribute('position'), colors = [];
       for (let i = 0; i < pos.count; i++) {
         const [px, py] = toPx(v.fromBufferAttribute(pos, i));
@@ -582,14 +603,20 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       tex.colorSpace = THREE.SRGBColorSpace;
       tex.anisotropy = 4;
       const mat = new THREE.MeshBasicMaterial({ map: tex, vertexColors: true, toneMapped: false });
-      disposables.push(geo, mat, tex);
-      scene.add(new THREE.Mesh(geo, mat));
-      // A soft shadow a little below and to the right, where the lamp throws it.
-      const sh = 6;
-      const shadowGeo = quad([onPlane(x + sh, y + sh, posterZ - 0.002), onPlane(x + w + sh, y + sh, posterZ - 0.002), onPlane(x + w + sh, y + h + sh, posterZ - 0.002), onPlane(x + sh, y + h + sh, posterZ - 0.002)], (p, s, t) => [s, 1 - t], 1);
+      const shadowGeo = quad(corners(shadow, 0.002), (p, s, t) => [s, 1 - t], 1);
       const shadowMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false, toneMapped: false });
-      disposables.push(shadowGeo, shadowMat);
-      scene.add(new THREE.Mesh(shadowGeo, shadowMat));
+      disposables.push(geo, mat, tex, shadowGeo, shadowMat);
+      scene.add(new THREE.Mesh(shadowGeo, shadowMat), new THREE.Mesh(geo, mat));
+    };
+    posterTexs.forEach((tex, n) => {
+      const { x, y, w, gap } = POSTERS, h = w * 1.5;
+      hang(tex, x + (n % 3) * (w + gap), y + Math.floor(n / 3) * (h + gap), w, h);
+    });
+    // Two rows of polaroids, the second shifted half a step so they don't line up.
+    memoryTexs.forEach((tex, n) => {
+      const { x, y, w, step, rowGap, tilt } = MEMORIES;
+      const row = n < 7 ? 0 : 1, col = row ? n - 7 : n;
+      hang(tex, x + col * step + row * (step / 2), y + row * rowGap + (n % 2) * 3, w, w * (245 / 200), tilt[n], 3);
     });
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
     wall('right', [[RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, BACK_Z]]);
@@ -688,6 +715,21 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       bass.visible = false;
       bass = card;
       bassHome.set(0, 0, 0);
+    }
+    if (shelfTex) {
+      // Same idea for the shelf, which stays put; it just covers the 3D books.
+      const { x, y, w, h, z } = SHELF_CARD;
+      const geo = quad([onPlane(x, y, z), onPlane(x + w, y, z), onPlane(x + w, y + h, z), onPlane(x, y + h, z)], (p) => {
+        const [px, py] = toPx(p);
+        return [(px - x) / w, 1 - (py - y) / h];
+      }, 4);
+      shelfTex.colorSpace = THREE.SRGBColorSpace;
+      shelfTex.anisotropy = aniso;
+      const mat = new THREE.MeshBasicMaterial({ map: shelfTex, transparent: true, depthWrite: false, toneMapped: false });
+      disposables.push(geo, mat, shelfTex);
+      const card = new THREE.Mesh(geo, mat);
+      card.renderOrder = 1;
+      scene.add(card);
     }
 
     scene.add(new THREE.HemisphereLight(LIGHTS.sky, LIGHTS.ground, LIGHTS.ambient));
