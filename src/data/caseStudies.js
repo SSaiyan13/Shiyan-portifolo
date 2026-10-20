@@ -8,6 +8,7 @@
 //   { cards: [[title, text]] }    a grid of small cards
 //   { table: { head, rows, highlight } }   a table; `highlight` is a row index
 //   { embed: { src, href, label } }        slides shown in place, with a link out
+//   { photos: [[src, alt]] }      a row of photos
 
 export const caseStudies = {
   launchpath: {
@@ -173,16 +174,9 @@ export const caseStudies = {
         id: 'reflections',
         label: 'Reflections',
         blocks: [
-          { p: 'This was my first product hackathon, and the first time I learned the product lifecycle properly. I was thinking very technically and had never really considered the business side, and the feedback made that impossible to ignore. It’s pushed me to build up that side of myself, because an ideal PM can do both.' },
-          { p: 'The judges’ main feedback:' },
-          {
-            list: [
-              'How to expand the features beyond the basics.',
-              'How to monetize better.',
-              'Urgency, and a reason to come back. Duolingo came up: people return every day even when they’re not actually learning the language.',
-              'Getting people to take action on their ideas.'
-            ]
-          }
+          { p: 'This was my first product hackathon, and the first time I learned the product lifecycle properly. I was thinking very technically and had never really considered the business side, and the judges’ feedback made that impossible to ignore.' },
+          { p: 'They pushed us on things we hadn’t thought about: how Jolty grows beyond its basic features, how it makes money, and what gives people the urgency and motivation to come back. They pointed to Duolingo, which people open every day even when they aren’t really learning the language. And a daily idea only matters if people take action on it, so getting them from a sentence to doing something was the next problem to solve.' },
+          { p: 'All of it made me want to build up the business side of myself, because an ideal PM can do both.' }
         ]
       }
     ]
@@ -248,7 +242,8 @@ export const caseStudies = {
         blocks: [
           { p: 'Honestly, my most creative technical product to date. Coming up with the idea was a rollercoaster with my team. So many teams were building apps and websites, and this one made us think outside the box. It was also my longest ideation process ever, but in the best stories, the best ideas come in a time crunch, at random.' },
           { p: 'With about five hours left before submission, a mentor hit us with hard-hitting questions and scenarios that destroyed our confidence. It taught me the importance of finding a user who wouldn’t use the product, to see its real limits, while still trusting that what we built is great and works. So we kept going: we built a pitch that named the limitations upfront and stopped trying to make the product too broad.' },
-          { quote: 'Funnily enough, that same mentor judged our pitch. This time we were ready, and we held our ground.' }
+          { quote: 'Funnily enough, that same mentor judged our pitch. This time we were ready, and we held our ground.' },
+          { photos: [['/assets/case-planless-team.webp', 'The Planless team at UXathon 2026, holding I love UX signs'], ['/assets/case-planless-award.webp', 'The Planless team holding their 2nd place winner certificates']] }
         ]
       }
     ]

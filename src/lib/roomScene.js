@@ -91,19 +91,25 @@ const POSTERS = {
   lightRef: 125
 };
 
-// Polaroids of the owner's memories, pinned in two loose rows on the wall above
-// the portrait: room.png position of the first one, each one's width (cards are
-// 200x245), the step between them, and a small tilt each so they look pinned by hand.
+// Polaroids of the owner's memories, pinned in loose rows on the wall: above the
+// portrait, beside it, and left of the posters in the lamp's glow. Each row is
+// [x, y, count] in room.png pixels; polaroids are `w` wide (cards are 200x245),
+// `step` apart, and each gets a small tilt so they look pinned by hand.
+const MEMORY_ROWS = [[912, 222, 7], [937, 280, 8], [912, 338, 7], [1114, 396, 3], [487, 222, 3], [512, 280, 3]];
 const MEMORIES = {
-  files: Array.from({ length: 13 }, (_, i) => `/assets/memory-${String(i + 1).padStart(2, '0')}.webp`),
-  x: 912, y: 222, w: 40, step: 50, rowGap: 58,
-  tilt: [-3, 2, -1.5, 3, -2, 1, -3.5, 2.5, -1, 3, -2.5, 1.5, -2]
+  files: Array.from({ length: 31 }, (_, i) => `/assets/memory-${String(i + 1).padStart(2, '0')}.webp`),
+  w: 40,
+  spots: MEMORY_ROWS.flatMap(([x, y, n]) => Array.from({ length: n }, (_, i) => [x + i * 50, y + (i % 2) * 3])),
+  tilt: (n) => ((n * 37) % 7) - 3
 };
 
-// The shelf with the plant, books and camera is drawn from the painting, like the
-// bass: the soft 3D books read as blocky. A cut-out of room.png at this offset and
-// size, with soft edges, on a card standing just in front of the shelf.
-const SHELF_CARD = { src: '/assets/shelf-cut.webp', x: 398, y: 330, w: 236, h: 130, z: -0.16 };
+// Furniture drawn from the painting instead of the 3D model, like the bass: the
+// soft 3D books and plants read as blocky. Each is a cut-out of room.png (at this
+// offset and size, with the wall cut away) on a card just in front of the model's.
+const CARDS = [
+  { src: '/assets/shelf-cut.webp', x: 398, y: 330, w: 236, h: 130, z: -0.16 }, // shelf: plant, books, camera
+  { src: '/assets/plant-cut.webp', x: 1115, y: 485, w: 97, h: 99, z: -0.08 } // plant beside the portrait
+];
 
 // Camera movement. Dragging pans the view across the painting (it can reach the
 // painting's edges, and stretches a little past them) and turns the camera a
@@ -561,9 +567,9 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
   const loadAll = (files) => Promise.all(files.map((f) => new THREE.TextureLoader().loadAsync(f).catch(() => null)));
   const loadPosters = loadAll(POSTERS.files);
   const loadMemories = loadAll(MEMORIES.files);
-  const loadShelf = new THREE.TextureLoader().loadAsync(SHELF_CARD.src).catch(() => null);
+  const loadCards = loadAll(CARDS.map((c) => c.src));
 
-  Promise.all([loadImage, loadModel, loadBass, loadPosters, loadMemories, loadShelf]).then(([img, gltf, bassTex, posterTexs, memoryTexs, shelfTex]) => {
+  Promise.all([loadImage, loadModel, loadBass, loadPosters, loadMemories, loadCards]).then(([img, gltf, bassTex, posterTexs, memoryTexs, cardTexs]) => {
     if (destroyed) return;
 
     const back = backWallTexture(img, lite);
@@ -612,11 +618,9 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       const { x, y, w, gap } = POSTERS, h = w * 1.5;
       hang(tex, x + (n % 3) * (w + gap), y + Math.floor(n / 3) * (h + gap), w, h);
     });
-    // Two rows of polaroids, the second shifted half a step so they don't line up.
     memoryTexs.forEach((tex, n) => {
-      const { x, y, w, step, rowGap, tilt } = MEMORIES;
-      const row = n < 7 ? 0 : 1, col = row ? n - 7 : n;
-      hang(tex, x + col * step + row * (step / 2), y + row * rowGap + (n % 2) * 3, w, w * (245 / 200), tilt[n], 3);
+      const spot = MEMORIES.spots[n];
+      if (spot) hang(tex, spot[0], spot[1], MEMORIES.w, MEMORIES.w * (245 / 200), MEMORIES.tilt(n), 3);
     });
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
     wall('right', [[RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, BACK_Z]]);
@@ -716,21 +720,22 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       bass = card;
       bassHome.set(0, 0, 0);
     }
-    if (shelfTex) {
-      // Same idea for the shelf, which stays put; it just covers the 3D books.
-      const { x, y, w, h, z } = SHELF_CARD;
+    // Same idea for the shelf and the plant, which stay put; they just cover the 3D ones.
+    CARDS.forEach(({ x, y, w, h, z }, n) => {
+      const tex = cardTexs[n];
+      if (!tex) return;
       const geo = quad([onPlane(x, y, z), onPlane(x + w, y, z), onPlane(x + w, y + h, z), onPlane(x, y + h, z)], (p) => {
         const [px, py] = toPx(p);
         return [(px - x) / w, 1 - (py - y) / h];
       }, 4);
-      shelfTex.colorSpace = THREE.SRGBColorSpace;
-      shelfTex.anisotropy = aniso;
-      const mat = new THREE.MeshBasicMaterial({ map: shelfTex, transparent: true, depthWrite: false, toneMapped: false });
-      disposables.push(geo, mat, shelfTex);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = aniso;
+      const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, toneMapped: false });
+      disposables.push(geo, mat, tex);
       const card = new THREE.Mesh(geo, mat);
       card.renderOrder = 1;
       scene.add(card);
-    }
+    });
 
     scene.add(new THREE.HemisphereLight(LIGHTS.sky, LIGHTS.ground, LIGHTS.ambient));
     for (const [color, intensity, decay, x, y, z] of LIGHTS.points) {

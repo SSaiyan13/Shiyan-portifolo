@@ -239,6 +239,15 @@ function Block({ b }) {
     );
   }
   if (b.embed) return <Slides {...b.embed} />;
+  if (b.photos) {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,300px),1fr))', gap: 'clamp(10px,1.4vw,18px)' }}>
+        {b.photos.map(([src, alt]) => (
+          <img key={src} src={src} alt={alt} loading="lazy" decoding="async" style={{ display: 'block', width: '100%', aspectRatio: '3/2', objectFit: 'cover', borderRadius: 12, border: `1px solid ${LINE}` }} />
+        ))}
+      </div>
+    );
+  }
   return null;
 }
 
