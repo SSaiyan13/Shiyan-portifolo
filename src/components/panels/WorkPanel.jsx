@@ -1,10 +1,31 @@
-import { forwardRef } from 'react';
+import { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
 import PanelHeader from '../PanelHeader.jsx';
+import CaseStudy from '../CaseStudy.jsx';
 import { workProjects } from '../../data/work.js';
+import { caseStudies } from '../../data/caseStudies.js';
 import { useScrollReveal } from '../../lib/useScrollReveal.js';
 
 const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, ref) {
   useScrollReveal(ref, []);
+  // The open case study, if any, and the card that opened it (focus goes back there).
+  const [caseId, setCaseId] = useState(null);
+  const openerRef = useRef(null);
+  // Opening a case study adds a history step, so the phone's back gesture closes
+  // it instead of leaving the site; closing it from the page steps back again.
+  const openCase = (id, el) => {
+    openerRef.current = el;
+    history.pushState({ caseId: id }, '');
+    setCaseId(id);
+  };
+  const closeCase = useCallback(() => history.back(), []);
+  useEffect(() => {
+    const onBack = () => {
+      setCaseId(null);
+      requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+    };
+    addEventListener('popstate', onBack);
+    return () => removeEventListener('popstate', onBack);
+  }, []);
 
   return (
     <div
@@ -13,11 +34,13 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
       style={{
         position: 'fixed', inset: 0, zIndex: 80,
         background: 'linear-gradient(180deg,rgba(11,13,12,.24) 0%,rgba(11,13,12,.88) 38vh,#0B0D0C 78vh)',
-        backdropFilter: 'blur(26px) saturate(140%)', WebkitBackdropFilter: 'blur(26px) saturate(140%)',
+        // A case study covers the page solid, so the blur behind it is switched off
+        // rather than redrawn for nothing.
+        backdropFilter: caseId ? 'none' : 'blur(26px) saturate(140%)', WebkitBackdropFilter: caseId ? 'none' : 'blur(26px) saturate(140%)',
         willChange: 'transform,opacity,filter'
       }}
     >
-      <div data-scroller="" style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+      <div data-scroller="" inert={caseId ? true : undefined} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <PanelHeader label="Technical Projects" closeRef={closeRef} onClose={onClose} />
 
         <div data-panelhead="" style={{ padding: 'clamp(48px,9vh,110px) clamp(18px,3.2vw,44px) clamp(34px,5vh,64px)', maxWidth: 1500 }}>
@@ -45,19 +68,24 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
                 <span style={{ fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', lineHeight: 1.36, letterSpacing: '-.01em', color: 'rgba(247,240,240,.66)', maxWidth: '32ch', textWrap: 'pretty' }}>
                   {p.subtitle}
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 'clamp(6px,1vh,12px)', fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F' }}>
-                  {p.linkLabel} <span data-workarrow="" style={{ opacity: 0.5, transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)' }}>↗</span>
-                </span>
+                {!p.caseId && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 'clamp(6px,1vh,12px)', fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F' }}>
+                    {p.linkLabel} <span data-workarrow="" style={{ opacity: 0.5, transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)' }}>↗</span>
+                  </span>
+                )}
               </span>
             );
+            // Projects with a case study open it here; the rest link out.
+            const Card = p.caseId ? 'button' : 'a';
+            const action = p.caseId
+              ? { type: 'button', onClick: (e) => openCase(p.caseId, e.currentTarget) }
+              : { href: p.href, target: '_blank', rel: 'noopener noreferrer' };
             return (
-              <a
+              <Card
                 key={p.title}
                 data-work=""
-                href={p.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 'clamp(18px,4vw,72px)', alignItems: 'center', textDecoration: 'none' }}
+                {...action}
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 'clamp(18px,4vw,72px)', alignItems: 'center', width: '100%', textAlign: 'left', textDecoration: 'none' }}
               >
                 {p.imageFirst ? (
                   <>
@@ -70,7 +98,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
                     {image}
                   </>
                 )}
-              </a>
+              </Card>
             );
           })}
         </div>
@@ -99,6 +127,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
           </button>
         </div>
       </div>
+      {caseId && caseStudies[caseId] && <CaseStudy study={caseStudies[caseId]} onClose={closeCase} />}
     </div>
   );
 });
