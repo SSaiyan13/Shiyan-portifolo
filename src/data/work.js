@@ -1,6 +1,7 @@
 export const workProjects = [
   {
     title: 'Launchpath',
+    caseId: 'launchpath',
     context: 'Productathon · ProduHacks 2026',
     subtitle: 'Team-level onboarding platform powered by AI.',
     href: 'https://devpost.com/software/launchpath',
@@ -11,6 +12,7 @@ export const workProjects = [
   },
   {
     title: 'Jolty',
+    caseId: 'jolty',
     context: 'Hackathon · Producathon · 1st place overall',
     subtitle: 'An app to build your creative muscle.',
     href: 'https://devpost.com/software/jotly',
@@ -21,6 +23,7 @@ export const workProjects = [
   },
   {
     title: 'Planless',
+    caseId: 'planless',
     context: 'Designathon · UBC UX Hub UXathon 2026 · 2nd place, Beginner Stream',
     subtitle: 'iMessage extension that helps you plan events.',
     href: 'https://devpost.com/software/uxathon-plan-less',

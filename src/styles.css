@@ -125,3 +125,10 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
   [data-hintdot] { animation: none; opacity: 1; }
   [data-ring]::after { animation: none; }
 }
+
+/* Case study section links scroll sideways on small screens, without a scrollbar. */
+[data-casenav]::-webkit-scrollbar { display: none; }
+@media (max-width: 640px) {
+  [data-casebar] { flex-wrap: wrap !important; }
+  [data-casenav] { margin-left: 0 !important; width: 100%; }
+}

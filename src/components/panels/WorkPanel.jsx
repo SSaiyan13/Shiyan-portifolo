@@ -1,10 +1,19 @@
-import { forwardRef } from 'react';
+import { forwardRef, useCallback, useRef, useState } from 'react';
 import PanelHeader from '../PanelHeader.jsx';
+import CaseStudy from '../CaseStudy.jsx';
 import { workProjects } from '../../data/work.js';
+import { caseStudies } from '../../data/caseStudies.js';
 import { useScrollReveal } from '../../lib/useScrollReveal.js';
 
 const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, ref) {
   useScrollReveal(ref, []);
+  // The open case study, if any, and the card that opened it (focus goes back there).
+  const [caseId, setCaseId] = useState(null);
+  const openerRef = useRef(null);
+  const closeCase = useCallback(() => {
+    setCaseId(null);
+    requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+  }, []);
 
   return (
     <div
@@ -45,19 +54,22 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
                 <span style={{ fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(15px,1.5vw,24px)', lineHeight: 1.36, letterSpacing: '-.01em', color: 'rgba(247,240,240,.66)', maxWidth: '32ch', textWrap: 'pretty' }}>
                   {p.subtitle}
                 </span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 'clamp(6px,1vh,12px)', fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F' }}>
-                  {p.linkLabel} <span data-workarrow="" style={{ opacity: 0.5, transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)' }}>↗</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 9, marginTop: 'clamp(6px,1vh,12px)', fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: p.caseId ? '#E0A6BE' : '#84828F' }}>
+                  {p.caseId ? 'Read the case study' : p.linkLabel} <span data-workarrow="" style={{ opacity: 0.5, transition: 'opacity .4s cubic-bezier(.22,1,.36,1),transform .4s cubic-bezier(.22,1,.36,1)' }}>{p.caseId ? '→' : '↗'}</span>
                 </span>
               </span>
             );
+            // Projects with a case study open it here; the rest link out.
+            const Card = p.caseId ? 'button' : 'a';
+            const action = p.caseId
+              ? { type: 'button', onClick: (e) => { openerRef.current = e.currentTarget; setCaseId(p.caseId); } }
+              : { href: p.href, target: '_blank', rel: 'noopener noreferrer' };
             return (
-              <a
+              <Card
                 key={p.title}
                 data-work=""
-                href={p.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 'clamp(18px,4vw,72px)', alignItems: 'center', textDecoration: 'none' }}
+                {...action}
+                style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 'clamp(18px,4vw,72px)', alignItems: 'center', width: '100%', textAlign: 'left', textDecoration: 'none' }}
               >
                 {p.imageFirst ? (
                   <>
@@ -70,7 +82,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
                     {image}
                   </>
                 )}
-              </a>
+              </Card>
             );
           })}
         </div>
@@ -99,6 +111,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
           </button>
         </div>
       </div>
+      {caseId && caseStudies[caseId] && <CaseStudy study={caseStudies[caseId]} onClose={closeCase} />}
     </div>
   );
 });
