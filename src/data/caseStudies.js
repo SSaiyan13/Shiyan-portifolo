@@ -19,7 +19,7 @@ export const caseStudies = {
     overview: {
       role: 'Building the Figma prototype and our video submission',
       timeline: 'Mar 21–22, 2026 · ProduHacks',
-      team: 'Min Li Wang, Lynn Vu, Owen Li and me',
+      team: 'Min Li Wang, Lynn Vu, Owen Li',
       skills: ['Problem framing', 'Positioning', 'Feature prioritisation', 'UX design', 'Figma', 'Figma Make', 'Prototyping', 'Pitching'],
       awards: [],
       links: [
@@ -78,7 +78,7 @@ export const caseStudies = {
         label: 'Results',
         blocks: [
           { p: 'We shipped a working MVP prototype in the hackathon window. It was designed in Figma and Figma Make, built with Google Antigravity and Gemini, and fronted in HTML, CSS and Tailwind, then pitched to the ProduHacks judges.' },
-          { stats: [['4', 'Core features shipped in the MVP prototype'], ['4', 'Teammates, from problem framing to pitch']] }
+          { stats: [['4', 'Core features shipped in the MVP prototype'], ['4', 'People on the team, from problem framing to pitch']] }
         ]
       },
       {
@@ -104,8 +104,8 @@ export const caseStudies = {
     alt: 'Jolty solution slide showing the app onboarding screen',
     overview: {
       role: 'Slide building, user personas, user research and building the prototype',
-      timeline: 'Jan 10–11, 2026 · 12-hour sprint',
-      team: '5 people',
+      timeline: 'Nov 22, 2025 · 12-hour sprint',
+      team: 'Min Li Wang, Elizabeth Lau',
       skills: ['User research', 'Survey design', 'MVP scoping', 'Behaviour design', 'Figma', 'Prototyping', 'Pitching'],
       awards: ['1st place overall @ Producathon'],
       links: [
@@ -187,7 +187,7 @@ export const caseStudies = {
     overview: {
       role: 'User journey and personas, user research, and building and debugging the prototype',
       timeline: 'Jan 10–11, 2026 · UXathon',
-      team: 'Renata Lawrence, Avia Wen, Dayson How and me',
+      team: 'Renata Lawrence, Avia Wen, Dayson How',
       skills: ['Problem framing', 'User flows', 'Interaction design', 'Figma', 'Prototyping', 'Presenting'],
       awards: ['2nd place, Beginner Stream @ UBC UX Hub UXathon 2026'],
       links: [

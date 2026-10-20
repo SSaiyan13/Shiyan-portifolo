@@ -11,17 +11,19 @@ const body = { margin: 0, maxWidth: '68ch', fontSize: 'clamp(15px,1.12vw,17.5px)
 const card = { padding: 'clamp(16px,1.6vw,22px)', border: `1px solid ${LINE}`, borderRadius: 12, background: 'rgba(247,240,240,.035)' };
 
 export default function CaseStudy({ study, onClose }) {
-  const rootRef = useRef(null);
+  const articleRef = useRef(null);
   const scrollerRef = useRef(null);
   const barRef = useRef(null);
   const backRef = useRef(null);
   const nav = [{ id: 'overview', label: 'Overview' }, ...study.sections.map(({ id, label }) => ({ id, label }))];
   const [active, setActive] = useState('overview');
 
-  // In on open; Esc closes the case study only, not the whole Projects page.
+  // The page covers the screen at once (solid, so nothing behind it has to be
+  // redrawn mid-animation) and only its text slides in. Esc closes the case
+  // study only, not the whole Projects page.
   useLayoutEffect(() => {
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    gsap.fromTo(rootRef.current, { opacity: 0, y: reduce ? 0 : 28 }, { opacity: 1, y: 0, duration: reduce ? 0.2 : 0.55, ease: 'power3.out' });
+    gsap.fromTo(articleRef.current, { opacity: 0, y: reduce ? 0 : 24 }, { opacity: 1, y: 0, duration: reduce ? 0.2 : 0.5, ease: 'power3.out' });
     backRef.current?.focus({ preventScroll: true });
     const onKey = (e) => {
       if (e.key !== 'Escape') return;
@@ -62,21 +64,20 @@ export default function CaseStudy({ study, onClose }) {
   const { overview: o } = study;
   return (
     <div
-      ref={rootRef}
       role="dialog"
       aria-modal="true"
       aria-label={`${study.title} case study`}
       data-case=""
       style={{ position: 'fixed', inset: 0, zIndex: 95, background: '#0B0D0C' }}
     >
-      <div ref={scrollerRef} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
+      <div ref={scrollerRef} data-case-scroller="" style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}>
         <div
           ref={barRef}
           data-casebar=""
           style={{
             position: 'sticky', top: 0, zIndex: 5, display: 'flex', alignItems: 'center', gap: '10px 24px',
-            padding: '14px clamp(18px,3.2vw,44px)', background: 'rgba(11,13,12,.92)',
-            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', borderBottom: `1px solid ${LINE}`
+            // Solid rather than blurred: a blur here is redrawn on every scroll.
+            padding: '14px clamp(18px,3.2vw,44px)', background: 'rgba(11,13,12,.97)', borderBottom: `1px solid ${LINE}`
           }}
         >
           <button
@@ -104,7 +105,7 @@ export default function CaseStudy({ study, onClose }) {
           </nav>
         </div>
 
-        <article style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(46px,8vh,96px)', maxWidth: 1180, margin: '0 auto', padding: 'clamp(36px,7vh,84px) clamp(18px,3.2vw,44px) clamp(70px,12vh,140px)' }}>
+        <article ref={articleRef} style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(46px,8vh,96px)', maxWidth: 1180, margin: '0 auto', padding: 'clamp(36px,7vh,84px) clamp(18px,3.2vw,44px) clamp(70px,12vh,140px)' }}>
           <section id="cs-overview" data-cs-section="" style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(22px,3.4vh,36px)' }}>
             <span style={eyebrow}>{study.kicker}</span>
             <h1 style={{ margin: 0, fontFamily: "'Bodoni Moda',serif", fontWeight: 400, fontSize: 'clamp(44px,8vw,120px)', lineHeight: 0.9, letterSpacing: '-.035em', color: '#F7F0F0' }}>{study.title}</h1>
@@ -157,7 +158,7 @@ export default function CaseStudy({ study, onClose }) {
               ))}
             </div>
 
-            <img src={study.image} alt={study.alt} style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 16, border: `1px solid ${LINE}`, marginTop: 'clamp(6px,2vh,20px)' }} />
+            <img src={study.image} alt={study.alt} decoding="async" style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 16, border: `1px solid ${LINE}`, marginTop: 'clamp(6px,2vh,20px)' }} />
           </section>
 
           {study.sections.map((s) => (
@@ -241,13 +242,22 @@ function Block({ b }) {
   return null;
 }
 
-// The slides load by themselves as the reader scrolls near them (`loading="lazy"`),
-// so the rest of the case study isn't held up by a whole third-party app.
+// The slides load by themselves once the reader scrolls near them. The embed is a
+// whole third-party app, so loading it on open would slow the page down; the
+// browser's own `loading="lazy"` can't tell, since the page scrolls inside a panel.
 function Slides({ src, href, label }) {
+  const boxRef = useRef(null);
+  const [near, setNear] = useState(false);
+  useEffect(() => {
+    const box = boxRef.current;
+    const io = new IntersectionObserver(([en]) => en.isIntersecting && setNear(true), { root: box.closest('[data-case-scroller]'), rootMargin: '400px 0px' });
+    io.observe(box);
+    return () => io.disconnect();
+  }, []);
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <div style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: 'radial-gradient(120% 140% at 20% 0%,rgba(92,0,41,.4) 0%,rgba(11,13,12,1) 70%)' }}>
-        <iframe src={src} title={label} allowFullScreen loading="lazy" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />
+      <div ref={boxRef} style={{ position: 'relative', width: '100%', aspectRatio: '16/9', borderRadius: 14, overflow: 'hidden', border: `1px solid ${LINE}`, background: 'radial-gradient(120% 140% at 20% 0%,rgba(92,0,41,.4) 0%,rgba(11,13,12,1) 70%)' }}>
+        {near && <iframe src={src} title={label} allowFullScreen style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 0 }} />}
       </div>
       <a href={href} target="_blank" rel="noopener noreferrer" style={{ alignSelf: 'flex-start', fontSize: 10, letterSpacing: '.22em', textTransform: 'uppercase', color: GREY }}>
         Open {label} in a new tab <span aria-hidden="true">↗</span>

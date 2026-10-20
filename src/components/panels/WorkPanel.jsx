@@ -34,7 +34,9 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
       style={{
         position: 'fixed', inset: 0, zIndex: 80,
         background: 'linear-gradient(180deg,rgba(11,13,12,.24) 0%,rgba(11,13,12,.88) 38vh,#0B0D0C 78vh)',
-        backdropFilter: 'blur(26px) saturate(140%)', WebkitBackdropFilter: 'blur(26px) saturate(140%)',
+        // A case study covers the page solid, so the blur behind it is switched off
+        // rather than redrawn for nothing.
+        backdropFilter: caseId ? 'none' : 'blur(26px) saturate(140%)', WebkitBackdropFilter: caseId ? 'none' : 'blur(26px) saturate(140%)',
         willChange: 'transform,opacity,filter'
       }}
     >
