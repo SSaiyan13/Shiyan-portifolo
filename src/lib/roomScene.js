@@ -70,7 +70,9 @@ const RIGHT_WALL_PHOTOS = { x0: 1412, y0: 205, x1: 1524, y1: 444 };
 // The Apple Pencil on the desk, from its tip to its cap in room.png. A clean
 // one is built here and laid on whatever the model has under those points,
 // since the model's own pencil sinks into the desk.
-const PENCIL = { tip: [504, 597], cap: [614, 586], radius: 0.035 };
+// The model's pencil sits a little up and left of the drawn one, so these are
+// where the model's pencil appears; the new one is a touch thicker to cover it.
+const PENCIL = { tip: [484, 579], cap: [597, 566], radius: 0.045 };
 
 // On phones the 3D bass stands beside the desk instead of by the right wall, so
 // the view can crop tighter and the three clickable objects get bigger. This is
@@ -129,7 +131,8 @@ const MOVE = {
   stretch: 0.3, // how far a drag follows past the edge
   drag: 0.35, // share of the way to the finger per 60th of a second
   ease: 0.075, // the same for the mouse and for easing back
-  focus: 0.07, // how much hovering zooms in
+  focus: 0.07, // how much hovering an object zooms in
+  memoriesZoom: 0.5, // how much the polaroid wall zooms in (to twice as close)
   zoomMax: 2.2, // the painting gets soft past this
   zoomSnap: 1.08, // let go below this and the zoom goes back to none
   introDelay: 250, introMs: 1800
@@ -463,6 +466,8 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
   const cur = { ox: 0, oy: 0, px: 0, py: 0, z: 1, f: 0, fx: IMG_W / 2, fy: IMG_H / 2 };
   const goal = { ...cur };
   let follow = MOVE.ease, lastT = 0;
+  // How far the hover zoom moves in, and how far it drifts toward the object (set per object).
+  let focusZoom = MOVE.focus, focusDrift = 0.3;
   // Phones: 0 shows the whole room, 1 the desk. `intro` is when the glide in starts.
   let glide = glideIn ? 0 : 1, intro = 0;
   // The view before any gesture or hover, which is what a gesture is measured
@@ -512,9 +517,9 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
     rest = { ...view };
     if (cur.f > 0.0005) {
       // Hover: move in a little, and drift toward the object.
-      const s = 1 - MOVE.focus * cur.f;
+      const s = 1 - focusZoom * cur.f;
       const mx = view.x + view.w / 2, my = view.y + view.h / 2;
-      const nx = mx + (cur.fx - mx) * 0.3 * cur.f, ny = my + (cur.fy - my) * 0.3 * cur.f;
+      const nx = mx + (cur.fx - mx) * focusDrift * cur.f, ny = my + (cur.fy - my) * focusDrift * cur.f;
       view.w *= s;
       view.h *= s;
       view.x = nx - view.w / 2;
@@ -647,7 +652,7 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       const spot = MEMORIES.spots[n];
       if (spot) hang(tex, spot[0], spot[1], MEMORIES.w, MEMORIES.w * (245 / 200), MEMORIES.tilt(n), 3);
     });
-    // The big cluster of polaroids opens the photo album.
+    // The big cluster of polaroids: hovering (or tapping) it moves the camera in close.
     {
       const { x0, y0, x1, y1 } = MEMORIES.hotspot, z = BACK_Z + 0.004;
       const [a, b] = [onPlane(x0, y0, z), onPlane(x1, y1, z)];
@@ -869,10 +874,12 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       follow = MOVE.ease;
       invalidate();
     },
-    // The object being hovered ('work', 'about', 'music'), or null.
+    // The object being hovered ('work', 'about', 'music', 'memories'), or null.
+    // The objects get a slight move in; the polaroid wall a close look.
     setFocus(key) {
       const b = hot[key];
       if (b) {
+        [focusZoom, focusDrift] = key === 'memories' ? [MOVE.memoriesZoom, 1] : [MOVE.focus, 0.3];
         const t = key === 'music' ? bassT : 0;
         const [x, y] = toPx(v.set((b[0] + b[3]) / 2 + BASS_MOVE[0] * t, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2 + BASS_MOVE[2] * t));
         if (cur.f < 0.01) {

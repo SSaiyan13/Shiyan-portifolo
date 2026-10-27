@@ -32,7 +32,7 @@ const hotspots = [
   {
     key: 'memories',
     label: 'Memories',
-    ariaLabel: 'Open the photo album',
+    ariaLabel: 'Look closer at the polaroid wall',
     rect: { left: '58.9%', top: '20.7%', width: '27.7%', height: '17.8%' },
     ringRadius: 6,
     plate: 'up'
@@ -57,6 +57,8 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
   // While the 3D room is up, it places the hotspots itself, relative to the room box.
   const liveRef = useRef(false);
   const sceneRef = useRef(null);
+  // Whether a tap has the camera close on the polaroid wall.
+  const memoriesRef = useRef(false);
   const introRef = useRef(false);
   const fitRef = useRef(() => {});
 
@@ -301,11 +303,19 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
               ref={(el) => (hotRefs.current[i] = el)}
               data-hot=""
               aria-label={h.ariaLabel}
-              onClick={(e) => onOpen(h.key, e)}
+              onClick={(e) => {
+                if (h.key !== 'memories') return onOpen(h.key, e);
+                // The polaroid wall opens nothing: a tap toggles the close look (hover does it with a mouse).
+                memoriesRef.current = !memoriesRef.current;
+                sceneRef.current?.setFocus(memoriesRef.current ? 'memories' : null);
+              }}
               onPointerEnter={(e) => e.pointerType === 'mouse' && sceneRef.current?.setFocus(h.key)}
-              onPointerLeave={() => sceneRef.current?.setFocus(null)}
+              onPointerLeave={(e) => e.pointerType === 'mouse' && sceneRef.current?.setFocus(null)}
               onFocus={() => sceneRef.current?.setFocus(h.key)}
-              onBlur={() => sceneRef.current?.setFocus(null)}
+              onBlur={() => {
+                memoriesRef.current = false;
+                sceneRef.current?.setFocus(null);
+              }}
               style={{ position: 'absolute', ...h.rect, cursor: 'pointer', background: 'none', border: 0, pointerEvents: 'auto' }}
             >
               <span
