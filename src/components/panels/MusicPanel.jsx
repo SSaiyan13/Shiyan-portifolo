@@ -79,7 +79,6 @@ const MusicPanel = forwardRef(function MusicPanel({ closeRef, onClose }, ref) {
         <div data-reveal="" style={{ padding: '0 clamp(18px,3.2vw,44px)' }}>
           <div
             data-vid=""
-            data-bow-card=""
             role="button"
             tabIndex={0}
             onClick={() => openYoutube(liveProject.id)}
@@ -87,7 +86,7 @@ const MusicPanel = forwardRef(function MusicPanel({ closeRef, onClose }, ref) {
             style={{ position: 'relative', display: 'block', width: '100%', border: '1px solid rgba(247,240,240,.12)', borderRadius: 4, overflow: 'hidden', cursor: 'pointer', background: '#12100F' }}
           >
             <span style={{ display: 'block', position: 'relative', width: '100%', aspectRatio: '21/8', overflow: 'hidden' }}>
-              <img data-vidimg="" data-bow="" data-bow-radius="4" src={liveProject.thumb} onError={imgFallback} alt="LIVE performance" style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.6) brightness(.66)', transition: 'transform .8s cubic-bezier(.22,1,.36,1),filter .6s' }} />
+              <img data-vidimg="" src={liveProject.thumb} onError={imgFallback} alt="LIVE performance" style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.6) brightness(.66)', transition: 'transform .8s cubic-bezier(.22,1,.36,1),filter .6s' }} />
               <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(90deg,rgba(11,13,12,.86) 0%,rgba(11,13,12,.32) 52%,rgba(92,0,41,.34) 100%)' }} />
             </span>
             <span style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: 12, padding: 'clamp(20px,3vw,44px)' }}>
@@ -107,14 +106,13 @@ const MusicPanel = forwardRef(function MusicPanel({ closeRef, onClose }, ref) {
             <article key={mp.title} data-reveal="" style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
               <div
                 data-vid=""
-                data-bow-card=""
                 role="button"
                 tabIndex={0}
                 onClick={() => openYoutube(mp.performance.id)}
                 onKeyDown={handleVidKeyDown(mp.performance.id)}
                 style={{ position: 'relative', display: 'block', aspectRatio: '16/9', border: '1px solid rgba(247,240,240,.12)', borderRadius: 4, overflow: 'hidden', cursor: 'pointer', background: '#12100F' }}
               >
-                <img data-vidimg="" data-bow="" data-bow-radius="4" src={mp.performance.thumb} onError={imgFallback} alt={`${mp.title} performance`} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.62) brightness(.7)', transition: 'transform .8s cubic-bezier(.22,1,.36,1),filter .6s' }} />
+                <img data-vidimg="" src={mp.performance.thumb} onError={imgFallback} alt={`${mp.title} performance`} style={{ display: 'block', width: '100%', height: '100%', objectFit: 'cover', filter: 'saturate(.62) brightness(.7)', transition: 'transform .8s cubic-bezier(.22,1,.36,1),filter .6s' }} />
                 <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(180deg,rgba(11,13,12,.1) 0%,rgba(11,13,12,.72) 100%)' }} />
                 <span data-vidplay="" style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%,-50%) scale(.9)', display: 'grid', placeItems: 'center', width: 62, height: 62, border: '1px solid rgba(247,240,240,.42)', borderRadius: 999, background: 'rgba(11,13,12,.46)', backdropFilter: 'blur(10px)', opacity: 0, transition: 'opacity .4s,transform .5s cubic-bezier(.22,1,.36,1)', color: '#F7F0F0', fontSize: 14 }}>▶</span>
                 <span style={{ position: 'absolute', left: 16, bottom: 14, fontSize: 9, letterSpacing: '.24em', textTransform: 'uppercase', color: 'rgba(247,240,240,.78)' }}>Performance</span>

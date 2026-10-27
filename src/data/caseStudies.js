@@ -1,5 +1,5 @@
 // Case studies for the Technical Projects page, keyed by the `caseId` in work.js.
-// Each one is an overview (role, timeline, team, skills, awards, links) and a list
+// Each one is an overview (role, team, tools, skills, awards, links) and a list
 // of sections. A section is a heading plus blocks, drawn in order:
 //   { p }                         a paragraph
 //   { stats: [[value, label]] }   a row of number tiles
@@ -19,14 +19,12 @@ export const caseStudies = {
     alt: 'LaunchPath pitch deck title slide',
     overview: {
       role: 'Building the Figma prototype and our video submission',
-      timeline: 'Mar 21–22, 2026 · ProduHacks',
       team: 'Min Li Wang, Lynn Vu, Owen Li',
       skills: ['Problem framing', 'Positioning', 'Feature prioritisation', 'UX design', 'Figma', 'Figma Make', 'Prototyping', 'Pitching'],
       awards: [],
       links: [
         ['Pitch deck', 'https://www.figma.com/deck/rXAgtPoJ9zqaCP6lW2enI4/Produhacks_2026_LaunchPath-Pitch-Deck?node-id=0-20'],
-        ['GitHub', 'https://github.com/owenzli/launchpath_produhacks_2026'],
-        ['Devpost', 'https://devpost.com/software/launchpath']
+        ['GitHub', 'https://github.com/owenzli/launchpath_produhacks_2026']
       ]
     },
     sections: [
@@ -106,14 +104,12 @@ export const caseStudies = {
     alt: 'Jolty solution slide showing the app onboarding screen',
     overview: {
       role: 'Slide building, user personas, user research and building the prototype',
-      timeline: 'Nov 22, 2025 · 12-hour sprint',
       team: 'Min Li Wang, Elizabeth Lau',
       skills: ['User research', 'Survey design', 'MVP scoping', 'Behaviour design', 'Figma', 'Prototyping', 'Pitching'],
       awards: ['1st place overall @ Producathon'],
       links: [
         ['Pitch deck', 'https://www.figma.com/deck/EK8e4MUTqf2IujX6stmlO4'],
-        ['Prototype', 'https://gemini.google.com/share/6cb4665d6c8e'],
-        ['Devpost', 'https://devpost.com/software/jotly']
+        ['Prototype', 'https://gemini.google.com/share/6cb4665d6c8e']
       ]
     },
     sections: [
@@ -162,6 +158,7 @@ export const caseStudies = {
         blocks: [
           { p: 'We designed the flows in Figma, used Gemini Canvas and ChatGPT for the prompt logic, built a lightweight Python backend to store and resurface entries, and finished the prototype and pitch inside the 12-hour sprint.' },
           { stats: [['1st', 'Place overall'], ['98', 'Students heard from'], ['12 h', 'Prototype and pitch, start to finish']] },
+          { photos: [['/assets/case-jolty-win.webp', 'The Jolty team holding their Producathon winner certificates in front of the Jolty pitch slide']] },
           { p: 'Next on the list: smarter prompts based on past entries, a weekly “idea remix” mode, export to Notes and Notion, and a business model built on habit analytics and premium reflections.' }
         ]
       },
@@ -190,15 +187,12 @@ export const caseStudies = {
     alt: 'Planless concept slide: why does taking a break take work?',
     overview: {
       role: 'User journey and personas, user research, and building and debugging the prototype',
-      timeline: 'Jan 10–11, 2026 · UXathon',
       team: 'Renata Lawrence, Avia Wen, Dayson How',
       skills: ['Problem framing', 'User flows', 'Interaction design', 'Figma', 'Prototyping', 'Presenting'],
       awards: ['2nd place, Beginner Stream @ UBC UX Hub UXathon 2026'],
       links: [
         ['Figma prototype', 'https://www.figma.com/proto/xedceibnGk7RSqInhpC993/Planless?page-id=0%3A1&node-id=2-6184&content-scaling=fixed&starting-point-node-id=2%3A6184&t=nFyzTpAZDUoi9dGE-1'],
-        ['Slides', 'https://www.canva.com/design/DAG-FCq1CAY/U-8hhDKGs5JkyU-07fFTYg/view'],
-        ['Devpost', 'https://devpost.com/software/uxathon-plan-less']
-      ]
+        ['Slides', 'https://www.canva.com/design/DAG-FCq1CAY/U-8hhDKGs5JkyU-07fFTYg/view']      ]
     },
     sections: [
       {
@@ -244,6 +238,104 @@ export const caseStudies = {
           { p: 'With about five hours left before submission, a mentor hit us with hard-hitting questions and scenarios that destroyed our confidence. It taught me the importance of finding a user who wouldn’t use the product, to see its real limits, while still trusting that what we built is great and works. So we kept going: we built a pitch that named the limitations upfront and stopped trying to make the product too broad.' },
           { quote: 'Funnily enough, that same mentor judged our pitch. This time we were ready, and we held our ground.' },
           { photos: [['/assets/case-planless-team.webp', 'The Planless team at UXathon 2026, holding I love UX signs'], ['/assets/case-planless-award.webp', 'The Planless team holding their 2nd place winner certificates']] }
+        ]
+      }
+    ]
+  },
+
+  sodelic: {
+    kicker: 'Career · Product Designer Intern',
+    title: 'Sodelic',
+    summary: 'Designing a scope tool clients actually want to use.',
+    image: '/assets/work-sodelic.png',
+    alt: 'Sodelic dashboard showing project scope tracking',
+    overview: {
+      role: 'Product Designer Intern (sole designer)',
+      team: 'Founder, VP, development team',
+      tools: 'Figma, Jira, Notion, Adobe Premiere Pro',
+      skills: ['End-to-end product design', 'User research', 'Surveys', 'Wireframing', 'Prototyping', 'Design systems', 'Onboarding design', 'Stakeholder demos', 'Video production'],
+      awards: [],
+      links: [['sodelic.com', 'https://www.sodelic.com/']]
+    },
+    sections: [
+      {
+        id: 'overview-text',
+        label: 'About',
+        blocks: [
+          { p: 'Sodelic is a B2B scope management platform for software teams. It sits on top of tools like Jira and links every client request to what’s actually being built, tested or delivered, so nothing falls through the cracks between developers and clients.' },
+          { p: 'As the only designer, I owned the full product design, from early research to the launch demo.' }
+        ]
+      },
+      {
+        id: 'problem',
+        label: 'Problem',
+        blocks: [
+          { p: 'Software teams lose time and money to scope creep and miscommunication. Developers live in Jira, but clients don’t. When clients get pulled into developer tools, the jargon overwhelms them, and they either disengage or keep asking for updates over email.' },
+          { p: 'The founders built Sodelic out of this exact frustration. My job was to design something both sides would actually use.' },
+          {
+            cards: [
+              ['Core users', 'Freelancers, consultants, PMs, founders and scrum masters who manage scope and map it to their dev workflow.'],
+              ['Collaborators', 'Clients and beta testers who review scope, give feedback and sign off on features. Collaborators are always free, so the product had to work for people with zero training.']
+            ]
+          }
+        ]
+      },
+      {
+        id: 'research',
+        label: 'Research',
+        blocks: [
+          { p: 'I talked with our internal team, partner companies and people at conferences in BC, and ran surveys through our network. Two things stood out:' },
+          {
+            list: [
+              'Teams didn’t want another task tracker. They’d already invested in Jira and weren’t going to move their developers.',
+              'Clients needed far less than we thought. They wanted to see progress and approve things, not manage tickets.'
+            ]
+          },
+          { quote: 'We stopped trying to compete with Jira and positioned Sodelic as a layer that complements it.' }
+        ]
+      },
+      {
+        id: 'solution',
+        label: 'Solution',
+        blocks: [
+          { p: 'Our two user groups needed opposite things. Core users were learning a brand new kind of product, so they needed guidance. Clients needed almost nothing: a clear way to see progress and say yes. On top of that, we were working against a tight release timeline and wanted to keep the product looking clean.' },
+          {
+            cards: [
+              ['The single-button client view', 'I stripped the client view down to its simplest form, so non-technical stakeholders could see what’s being built, leave feedback and sign off without a learning curve.'],
+              ['An in-app tutorial for core users', 'Instead of cluttering the interface with explanations, a guided walkthrough teaches new users the platform without compromising the clean design.'],
+              ['A design system', 'One system across the whole platform, so the experience stayed consistent and developers could build faster.']
+            ]
+          }
+        ]
+      },
+      {
+        id: 'process',
+        label: 'Process',
+        blocks: [
+          { p: 'I designed 20+ wireframes and 5 interactive prototypes in Figma, and ran weekly demos with the founder, our VP and partner companies. Showing working screens instead of writing long updates got everyone reacting to the same thing at the same time. I also produced 2 promotional videos in Premiere Pro to explain the product to users and stakeholders.' },
+          { stats: [['20+', 'Wireframes'], ['5', 'Interactive prototypes'], ['2', 'Promotional videos']] }
+        ]
+      },
+      {
+        id: 'results',
+        label: 'Impact',
+        blocks: [
+          { stats: [['10 → 7', 'Weeks for stakeholders to align on direction'], ['~50%', 'Fewer steps in core flows'], ['Launch', 'Shipped and demoed']] },
+          {
+            list: [
+              'Weekly prototype demos cut how long stakeholders took to agree on direction, from 10 weeks to 7.',
+              'The simplified interface and design system cut flow steps by roughly half and reduced developer rework.',
+              'Early users came back after the launch demo with ideas for new features, a good sign they saw where the product could go.'
+            ]
+          }
+        ]
+      },
+      {
+        id: 'reflections',
+        label: 'Reflections',
+        blocks: [
+          { p: 'This was my first time going through the entire product lifecycle, and being at a startup felt like being dropped into a warzone. So much information was coming at me that it was overwhelming at first, so I started asking questions, a lot of them, just to catch up. Somewhere along the way that feeling flipped: what started as fear and dread turned into something exciting. It also taught me to pace myself, because in that environment it’s easy to burn out if you don’t learn when to step back.' },
+          { quote: 'There’s no such thing as a wrong question. Asking them is now the first thing I do on any new project.' }
         ]
       }
     ]

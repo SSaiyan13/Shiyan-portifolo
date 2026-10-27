@@ -1,14 +1,12 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import * as THREE from 'three';
 import Header from './components/Header.jsx';
 import Hero from './components/Hero.jsx';
 import WorkPanel from './components/panels/WorkPanel.jsx';
 import MusicPanel from './components/panels/MusicPanel.jsx';
 import AboutPanel from './components/panels/AboutPanel.jsx';
 import { mountAmbient } from './lib/ambient.js';
-import { startWorkBow } from './lib/workBow.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -29,10 +27,8 @@ export default function App() {
 
   useEffect(() => {
     if (ambientCanvasRef.current) ambientApiRef.current = mountAmbient(ambientCanvasRef.current);
-    const bow = startWorkBow(THREE);
     return () => {
       ambientApiRef.current?.destroy?.();
-      bow.stop();
     };
   }, []);
 
@@ -112,8 +108,7 @@ export default function App() {
       <div data-panels="">
         {mountedKey === 'work' && <WorkPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} onOpen={openPanel} />}
         {mountedKey === 'music' && <MusicPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} />}
-        {mountedKey === 'about' && <AboutPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} />}
-      </div>
+        {mountedKey === 'about' && <AboutPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} />}      </div>
     </div>
   );
 }
