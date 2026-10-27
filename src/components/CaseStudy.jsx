@@ -112,7 +112,7 @@ export default function CaseStudy({ study, onClose }) {
             <p style={{ margin: 0, maxWidth: '30ch', fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(20px,2.3vw,34px)', lineHeight: 1.25, letterSpacing: '-.015em', color: 'rgba(247,240,240,.82)', textWrap: 'pretty' }}>{study.summary}</p>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,200px),1fr))', gap: 1, background: LINE, border: `1px solid ${LINE}` }}>
-              {[['Role', o.role], ['Timeline', o.timeline], ['Team', o.team]].map(([k, val]) => (
+              {[['Role', o.role], ['Team', o.team], ['Tools', o.tools]].filter(([, val]) => val).map(([k, val]) => (
                 <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 8, padding: '18px 20px', background: '#0B0D0C' }}>
                   <span style={{ fontSize: 9, letterSpacing: '.26em', textTransform: 'uppercase', color: GREY }}>{k}</span>
                   <span style={{ fontSize: 15, lineHeight: 1.45, color: '#F7F0F0' }}>{val}</span>

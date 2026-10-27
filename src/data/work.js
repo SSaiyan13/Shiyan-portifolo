@@ -34,7 +34,8 @@ export const workProjects = [
   },
   {
     title: 'Sodelic',
-    context: 'Career · UX/UI Intern',
+    caseId: 'sodelic',
+    context: 'Career · Product Designer Intern',
     subtitle: 'Simplifies project scope and keeps teams aligned from start to delivery.',
     href: 'https://www.sodelic.com/',
     linkLabel: 'sodelic.com',

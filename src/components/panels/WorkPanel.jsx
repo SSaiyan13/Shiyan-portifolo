@@ -56,7 +56,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
           {workProjects.map((p) => {
             const image = (
               <span data-workimg="" style={{ display: 'block', position: 'relative', borderRadius: 14, overflow: 'hidden', background: '#12100F' }}>
-                <img data-bow="" data-bow-radius="14" src={p.image} alt={p.alt} style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 14 }} />
+                <img src={p.image} alt={p.alt} style={{ display: 'block', width: '100%', aspectRatio: '16/9', objectFit: 'cover', borderRadius: 14 }} />
               </span>
             );
             const text = (

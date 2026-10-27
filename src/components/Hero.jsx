@@ -28,6 +28,14 @@ const hotspots = [
     rect: { left: '60.6%', top: '36.7%', width: '11.7%', height: '19.8%' },
     ringRadius: 4,
     plate: 'down'
+  },
+  {
+    key: 'memories',
+    label: 'Memories',
+    ariaLabel: 'Open the photo album',
+    rect: { left: '58.9%', top: '20.7%', width: '27.7%', height: '17.8%' },
+    ringRadius: 6,
+    plate: 'up'
   }
 ];
 
@@ -132,7 +140,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
     const tick = () => {
       cx += (tx - cx) * 0.075;
       cy += (ty - cy) * 0.075;
-      room.style.transform = `translate3d(calc(-50% + ${cx.toFixed(2)}px), calc(-50% + ${cy.toFixed(2)}px), 0) scale(1.015)`;
+      room.style.transform = `translate3d(calc(-50% + ${cx.toFixed(2)}px), calc(-50% + ${cy.toFixed(2)}px), 0) scale(1.03)`;
       raf = !live && (Math.abs(tx - cx) > 0.05 || Math.abs(ty - cy) > 0.05) ? requestAnimationFrame(tick) : 0;
     };
     const flat = () => {
@@ -263,10 +271,9 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         ref={roomRef}
         data-room=""
         style={{
-          // A little below centre on wide screens, so the wall under the header shows
-          // (the posters live there); the floor gives up the difference.
-          position: 'absolute', top: 'calc(50% + 36px)', left: '50%', transform: 'translate3d(-50%,-50%,0)',
-          width: '106vw', aspectRatio: `${IMG_W}/${IMG_H}`, willChange: 'transform', overflow: 'hidden',
+          // The full width of the room, so the bass by the right wall shows whole.
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate3d(-50%,-50%,0)',
+          width: '100vw', aspectRatio: `${IMG_W}/${IMG_H}`, willChange: 'transform', overflow: 'hidden',
           userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none'
         }}
       >
@@ -330,7 +337,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
         ref={asideRef}
         data-heroaside=""
         style={{
-          position: 'absolute', left: 'clamp(18px,3.2vw,44px)', bottom: 78, zIndex: 20,
+          position: 'absolute', left: 'clamp(18px,3.2vw,44px)', bottom: 40, zIndex: 20,
           display: 'flex', flexDirection: 'column', gap: 14, maxWidth: 'min(330px,38vw)', pointerEvents: 'none'
         }}
       >
@@ -375,42 +382,8 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
           </button>
         ))}
       </div>
-
-      <MarqueeBar />
     </section>
   );
 });
 
 export default Hero;
-
-function MarqueeBar() {
-  const words = ['Product Management', 'Music Technology', 'Sound Design', 'Cognitive Systems', 'Film · Music · Games'];
-  const strip = (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 34, padding: '11px 17px', fontFamily: "'Bodoni Moda',serif", fontSize: 13.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#84828F', whiteSpace: 'nowrap' }}>
-      {words.map((w) => (
-        <span key={w} style={{ display: 'contents' }}>
-          {w}
-          {/* Drawn rather than typed: iOS shows the ✳ character as a green emoji. */}
-          <svg aria-hidden="true" viewBox="0 0 16 16" width="11" height="11" style={{ flex: 'none', color: '#8E0640' }}>
-            <path d="M8 1.5v13M1.5 8h13M3.4 3.4l9.2 9.2M12.6 3.4l-9.2 9.2" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-          </svg>
-        </span>
-      ))}
-    </span>
-  );
-  return (
-    <div
-      data-marqueebar=""
-      style={{
-        position: 'absolute', left: 0, right: 0, bottom: 0, zIndex: 20, overflow: 'hidden',
-        borderTop: '1px solid rgba(247,240,240,.1)', background: 'rgba(11,13,12,.55)',
-        backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', pointerEvents: 'none'
-      }}
-    >
-      <div data-marquee="" style={{ display: 'flex', width: 'max-content', animation: 'sg-marquee 34s linear infinite' }}>
-        {strip}
-        {strip}
-      </div>
-    </div>
-  );
-}

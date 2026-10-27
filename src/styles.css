@@ -12,7 +12,6 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 [data-scroller]::-webkit-scrollbar { width: 6px; }
 [data-scroller]::-webkit-scrollbar-thumb { background: #3A2530; border-radius: 6px; }
 
-@keyframes sg-marquee { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
 
 [data-hot]:hover [data-ring], [data-hot]:focus-visible [data-ring] {
   opacity: 1 !important;
@@ -54,8 +53,8 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 }
 
 /* Header height, and the height of everything under the room on the first screen
-   (headline, page links, marquee). The stacked layout sizes the room from these. */
-:root { --header-h: 84px; --hero-rest: 390px; }
+   (headline and page links). The stacked layout sizes the room from these. */
+:root { --header-h: 84px; --hero-rest: 350px; }
 @media (max-width: 640px) {
   :root { --header-h: 56px; }
 }
@@ -64,7 +63,6 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
   html, body, #root { height: auto !important; overflow: auto !important; }
   [data-root] { height: auto !important; min-height: 0 !important; overflow: visible !important; }
   [data-stage] { position: relative !important; height: auto !important; padding-top: var(--header-h) !important; }
-  [data-marqueebar] { position: static !important; }
   /* The room starts below the header and takes the height the first screen has left,
      from the painting's own shape (66.56vw tall) to a little taller than it. The
      whole room always shows; extra height becomes wall above and floor below. */
@@ -96,8 +94,8 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 }
 
 /* Phones: the first screen is filled exactly. The room takes whatever height the
-   header, headline, page links and marquee leave, so the marquee sits at the bottom
-   of the screen with no empty band under it, and the three page links share one row. */
+   header, headline and page links leave, so the page links sit at the bottom of the
+   screen with no empty band under them, and share one row. */
 @media (max-width: 640px) and (max-aspect-ratio: 3/2) {
   [data-stage] { display: flex !important; flex-direction: column !important; min-height: 100vh !important; }
   [data-room] { flex: 1 1 auto !important; height: auto !important; min-height: 66.56vw !important; }
@@ -121,7 +119,6 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-marquee] { animation: none !important; }
   [data-hintdot] { animation: none; opacity: 1; }
   [data-ring]::after { animation: none; }
 }

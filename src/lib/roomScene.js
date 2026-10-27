@@ -63,11 +63,14 @@ const WALL_ROWS = 830;
 // Rows of plain wall added above the picture, for views taller than the painting.
 const WALL_PAD = 420;
 
-// Polaroids that sit below the clean part of the right wall (TL, TR, BR, BL in room.png).
-const POLAROIDS_PX = [
-  [[1455, 302.5], [1481.5, 300], [1482, 370], [1455, 372.5]],
-  [[1485.5, 363.5], [1514.5, 361], [1514.5, 435], [1485.5, 437.5]]
-];
+// The painting's own photos on the right wall (a room.png rectangle). They're
+// painted over with the wall around them, since the memory polaroids replace them.
+const RIGHT_WALL_PHOTOS = { x0: 1412, y0: 205, x1: 1524, y1: 444 };
+
+// The Apple Pencil on the desk, from its tip to its cap in room.png. A clean
+// one is built here and laid on whatever the model has under those points,
+// since the model's own pencil sinks into the desk.
+const PENCIL = { tip: [504, 597], cap: [614, 586], radius: 0.035 };
 
 // On phones the 3D bass stands beside the desk instead of by the right wall, so
 // the view can crop tighter and the three clickable objects get bigger. This is
@@ -99,6 +102,8 @@ const MEMORY_ROWS = [[912, 222, 7], [937, 280, 8], [912, 338, 7], [1114, 396, 3]
 const MEMORIES = {
   files: Array.from({ length: 31 }, (_, i) => `/assets/memory-${String(i + 1).padStart(2, '0')}.webp`),
   w: 40,
+  // The clickable area over the big cluster above the portrait, in room.png pixels.
+  hotspot: { x0: 905, y0: 212, x1: 1330, y1: 394 },
   spots: MEMORY_ROWS.flatMap(([x, y, n]) => Array.from({ length: n }, (_, i) => [x + i * 50, y + (i % 2) * 3])),
   tilt: (n) => ((n * 37) % 7) - 3
 };
@@ -290,7 +295,7 @@ function backWallTexture(img, smooth = false) {
   return { tex, light };
 }
 
-function wallTexture(img, { x0, x1, clean }) {
+function wallTexture(img, { x0, x1, clean }, wipe = null) {
   const w = x1 - x0;
   const cv = document.createElement('canvas');
   cv.width = w;
@@ -323,6 +328,21 @@ function wallTexture(img, { x0, x1, clean }) {
   ctx.drawImage(low, 0, 0, low.width, 1, 0, clean - 1, w, WALL_ROWS - clean + 1);
   ctx.drawImage(img, x0, clean - 26, w, 26, 0, clean - 26, w, 26);
   shade(clean, WALL_ROWS, 0.5);
+  if (wipe) {
+    // Paint the patch over row by row, blending from the wall just left of it to
+    // the wall just right of it, so the wall's light carries straight across.
+    const a = Math.max(0, wipe.x0 - x0 - 1), b = Math.min(w - 1, wipe.x1 - x0 + 1);
+    const top = WALL_PAD + wipe.y0, rows = wipe.y1 - wipe.y0;
+    const data = ctx.getImageData(a, top, b - a + 1, rows), px = data.data, rw = b - a + 1;
+    for (let j = 0; j < rows; j++) {
+      const l = j * rw * 4, r = (j * rw + rw - 1) * 4;
+      for (let i = 1; i < rw - 1; i++) {
+        const t = i / (rw - 1), k = (j * rw + i) * 4;
+        for (let c = 0; c < 3; c++) px[k + c] = px[l + c] + (px[r + c] - px[l + c]) * t;
+      }
+    }
+    ctx.putImageData(data, a, top);
+  }
   const tex = new THREE.CanvasTexture(cv);
   tex.colorSpace = THREE.SRGBColorSpace;
   tex.anisotropy = 4;
@@ -451,11 +471,13 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
   // The bass and where the model file put it; `bassT` is how far it has moved toward the desk.
   let bass = null, bassT = 0;
   const bassHome = new THREE.Vector3();
+  // The clickable boxes; the memory wall's is added once the room is built.
+  const hot = { ...HOT_BOXES };
 
   const layout = () => {
     if (!onLayout) return;
     const rects = {};
-    for (const [key, b] of Object.entries(HOT_BOXES)) {
+    for (const [key, b] of Object.entries(hot)) {
       const t = key === 'music' ? bassT : 0;
       const move = BASS_MOVE.map((d) => d * t);
       let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
@@ -578,7 +600,7 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
     const back = backWallTexture(img, lite);
     const wall = (key, corners) => {
       const r = WALLS[key];
-      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? back.tex : wallTexture(img, r) }));
+      add(quad(corners, projected(r.x0, r.x1 - r.x0, WALL_ROWS)), new THREE.MeshBasicMaterial({ map: key === 'back' ? back.tex : wallTexture(img, r, key === 'right' ? RIGHT_WALL_PHOTOS : null) }));
     };
     wall('back', [[LEFT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z]]);
 
@@ -625,6 +647,12 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       const spot = MEMORIES.spots[n];
       if (spot) hang(tex, spot[0], spot[1], MEMORIES.w, MEMORIES.w * (245 / 200), MEMORIES.tilt(n), 3);
     });
+    // The big cluster of polaroids opens the photo album.
+    {
+      const { x0, y0, x1, y1 } = MEMORIES.hotspot, z = BACK_Z + 0.004;
+      const [a, b] = [onPlane(x0, y0, z), onPlane(x1, y1, z)];
+      hot.memories = [a[0], b[1], z, b[0], a[1], z + 0.002];
+    }
     wall('left', [[LEFT_X, CEIL_Y, FRONT_Z], [LEFT_X, CEIL_Y, BACK_Z], [LEFT_X, FLOOR_Y, BACK_Z], [LEFT_X, FLOOR_Y, FRONT_Z]]);
     wall('right', [[RIGHT_X, CEIL_Y, BACK_Z], [RIGHT_X, CEIL_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, FRONT_Z], [RIGHT_X, FLOOR_Y, BACK_Z]]);
 
@@ -655,17 +683,6 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       const y = (tl[1] + (tr[1] - tl[1]) * s) * (1 - t) + (bl[1] + (br[1] - bl[1]) * s) * t;
       return [x / IMG_W, 1 - y / IMG_H];
     };
-
-    for (const px of POLAROIDS_PX) {
-      const corners = px.map(([x, y]) => {
-        const d = fromPx(x, y);
-        const k = (RIGHT_X - 0.003 - CAM_POS.x) / d.x;
-        return [CAM_POS.x + d.x * k, CAM_POS.y + d.y * k, CAM_POS.z + d.z * k];
-      });
-      const geo = quad(corners, paintUV(px), 4);
-      disposables.push(geo);
-      scene.add(new THREE.Mesh(geo, paintMat));
-    }
 
     // Pieces of the painting laid over the model's own surfaces. The surfaces aren't
     // perfectly flat, so depth is biased to keep the model from poking through.
@@ -739,6 +756,29 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
       card.renderOrder = 1;
       scene.add(card);
     });
+
+    // A clean Apple Pencil: find what the model has under the drawn pencil's tip
+    // and cap (seen from the painting's viewpoint), and lay the pencil on top.
+    {
+      const ray = new THREE.Raycaster();
+      const surface = ([px, py]) => {
+        ray.setFromCamera(new THREE.Vector2(px / IMG_W * 2 - 1, 1 - py / IMG_H * 2), refCam);
+        return ray.intersectObject(gltf.scene, true)[0]?.point;
+      };
+      const tip = surface(PENCIL.tip), cap = surface(PENCIL.cap);
+      if (tip && cap) {
+        const axis = cap.clone().sub(tip), len = axis.length(), r = len * PENCIL.radius;
+        // Its outline, tip to cap: the nib, the cone, the long body, the rounded end.
+        const outline = [[0, 0], [0.22, 0.015], [0.32, 0.03], [1, 0.115], [1, 0.95], [0.9, 0.985], [0.5, 0.998], [0, 1]];
+        const geo = new THREE.LatheGeometry(outline.map(([rr, y]) => new THREE.Vector2(rr * r, y * len)), 24);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35, metalness: 0 });
+        disposables.push(geo, mat);
+        const pencil = new THREE.Mesh(geo, mat);
+        pencil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
+        pencil.position.copy(tip).add(new THREE.Vector3(0, r, 0));
+        scene.add(pencil);
+      }
+    }
 
     scene.add(new THREE.HemisphereLight(LIGHTS.sky, LIGHTS.ground, LIGHTS.ambient));
     for (const [color, intensity, decay, x, y, z] of LIGHTS.points) {
@@ -831,7 +871,7 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
     },
     // The object being hovered ('work', 'about', 'music'), or null.
     setFocus(key) {
-      const b = HOT_BOXES[key];
+      const b = hot[key];
       if (b) {
         const t = key === 'music' ? bassT : 0;
         const [x, y] = toPx(v.set((b[0] + b[3]) / 2 + BASS_MOVE[0] * t, (b[1] + b[4]) / 2, (b[2] + b[5]) / 2 + BASS_MOVE[2] * t));
