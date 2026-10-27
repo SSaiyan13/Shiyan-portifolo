@@ -316,8 +316,10 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
                 memoriesRef.current = false;
                 sceneRef.current?.setFocus(null);
               }}
-              style={{ position: 'absolute', ...h.rect, cursor: 'pointer', background: 'none', border: 0, pointerEvents: 'auto' }}
+              style={{ position: 'absolute', ...h.rect, cursor: h.key === 'memories' ? 'default' : 'pointer', background: 'none', border: 0, pointerEvents: 'auto' }}
             >
+              {/* The polaroid wall just zooms in on hover: no ring or label on it. */}
+              {h.key !== 'memories' && <>
               <span
                 data-ring=""
                 style={{
@@ -338,6 +340,7 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
                   {h.label}
                 </span>
               </span>
+              </>}
             </button>
           ))}
         </div>

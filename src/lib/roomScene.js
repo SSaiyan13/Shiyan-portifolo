@@ -96,11 +96,11 @@ const POSTERS = {
   lightRef: 125
 };
 
-// Polaroids of the owner's memories, pinned in loose rows on the wall: above the
-// portrait, beside it, and left of the posters in the lamp's glow. Each row is
-// [x, y, count] in room.png pixels; polaroids are `w` wide (cards are 200x245),
-// `step` apart, and each gets a small tilt so they look pinned by hand.
-const MEMORY_ROWS = [[912, 222, 7], [937, 280, 8], [912, 338, 7], [1114, 396, 3], [487, 222, 3], [512, 280, 3]];
+// Polaroids of the owner's memories, pinned in loose rows: above the portrait,
+// beside it, and on the right wall above the bass (rows past x 1352 hang there).
+// Each row is [x, y, count] in room.png pixels; polaroids are `w` wide (cards are
+// 200x245), 50 apart, and each gets a small tilt so they look pinned by hand.
+const MEMORY_ROWS = [[912, 222, 7], [937, 280, 8], [912, 338, 7], [1114, 396, 3], [1420, 205, 2], [1445, 263, 2], [1420, 321, 2]];
 const MEMORIES = {
   files: Array.from({ length: 31 }, (_, i) => `/assets/memory-${String(i + 1).padStart(2, '0')}.webp`),
   w: 40,
@@ -621,13 +621,20 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
     // (vertex colours from the wall's own colour), so it dims and warms the way the
     // wall does instead of glowing at full brightness in a dark room, and it throws
     // a soft shadow a little below and to the right, where the lamp sends it.
+    // Pictures past the room's right corner in room.png hang on the right wall instead.
+    const onRightWall = (px, py, off) => {
+      const d = fromPx(px, py);
+      const k = (RIGHT_X - 0.004 + off - CAM_POS.x) / d.x;
+      return [CAM_POS.x + d.x * k, CAM_POS.y + d.y * k, CAM_POS.z + d.z * k];
+    };
     const hang = (tex, x, y, w, h, tilt = 0, shadow = 6) => {
       if (!tex) return;
       const z = BACK_Z + 0.004, cx = x + w / 2, cy = y + h / 2;
+      const right = x >= WALLS.right.x0;
       const a = (tilt * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
       const corners = (dx, dz) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]].map(([px, py]) => {
-        const rx = px - cx, ry = py - cy;
-        return onPlane(cx + rx * cos - ry * sin + dx, cy + rx * sin + ry * cos + dx, z - dz);
+        const rx = px - cx, ry = py - cy, qx = cx + rx * cos - ry * sin + dx, qy = cy + rx * sin + ry * cos + dx;
+        return right ? onRightWall(qx, qy, dz) : onPlane(qx, qy, z - dz);
       });
       const geo = quad(corners(0, 0), (p, s, t) => [s, 1 - t], 6);
       const pos = geo.getAttribute('position'), colors = [];
@@ -776,9 +783,11 @@ export function mountRoom(canvas, { lite = false, intro: glideIn = false, onRead
         // Its outline, tip to cap: the nib, the cone, the long body, the rounded end.
         const outline = [[0, 0], [0.22, 0.015], [0.32, 0.03], [1, 0.115], [1, 0.95], [0.9, 0.985], [0.5, 0.998], [0, 1]];
         const geo = new THREE.LatheGeometry(outline.map(([rr, y]) => new THREE.Vector2(rr * r, y * len)), 24);
-        const mat = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35, metalness: 0 });
+        // Drawn over everything: bits of the model's own pencil and desk poke through otherwise.
+        const mat = new THREE.MeshStandardMaterial({ color: 0xf1efea, roughness: 0.35, metalness: 0, depthTest: false });
         disposables.push(geo, mat);
         const pencil = new THREE.Mesh(geo, mat);
+        pencil.renderOrder = 2;
         pencil.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), axis.normalize());
         pencil.position.copy(tip).add(new THREE.Vector3(0, r, 0));
         scene.add(pencil);
