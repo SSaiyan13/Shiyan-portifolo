@@ -349,7 +349,7 @@ export const caseStudies = {
     alt: 'TRACE on a laptop: a song’s tab and sheet music with a playback marker on bar 3',
     overview: {
       role: 'Solo: problem framing, product design, prototyping and the accuracy study',
-      tools: 'Python, JavaScript, alphaTab, Spotify Basic Pitch, Demucs, Claude Code',
+      tools: 'Claude Code, Python, JavaScript, HTML & CSS, alphaTab, Spotify Basic Pitch, StemKit, Demucs, GitHub Codespaces, Claude Design',
       skills: ['Problem framing', 'User journey design', 'Fake-door testing', 'Accessibility', 'Prototyping', 'Accuracy evaluation', 'Rights and licensing'],
       awards: [],
       links: [

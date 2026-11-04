@@ -1,5 +1,16 @@
 export const workProjects = [
   {
+    title: 'TRACE',
+    caseId: 'trace',
+    context: 'Solo project · Product prototype · 2026',
+    subtitle: 'Turns a song into bass tab and sheet music you can check by ear.',
+    href: 'https://github.com/SSaiyan13/trace',
+    linkLabel: 'GitHub',
+    image: '/assets/work-trace.webp',
+    alt: 'TRACE on a laptop: a song’s tab and sheet music with a playback marker on bar 3',
+    imageFirst: false
+  },
+  {
     title: 'Launchpath',
     caseId: 'launchpath',
     context: 'Productathon · ProduHacks 2026',
@@ -42,16 +53,5 @@ export const workProjects = [
     image: '/assets/work-sodelic.png',
     alt: 'Sodelic dashboard showing project scope tracking',
     imageFirst: false
-  },
-  {
-    title: 'TRACE',
-    caseId: 'trace',
-    context: 'Solo project · Product prototype · 2026',
-    subtitle: 'Turns a song into bass tab and sheet music you can check by ear.',
-    href: 'https://github.com/SSaiyan13/trace',
-    linkLabel: 'GitHub',
-    image: '/assets/work-trace.webp',
-    alt: 'TRACE on a laptop: a song’s tab and sheet music with a playback marker on bar 3',
-    imageFirst: true
   }
 ];
