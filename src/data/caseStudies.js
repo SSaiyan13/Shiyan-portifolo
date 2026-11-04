@@ -339,5 +339,99 @@ export const caseStudies = {
         ]
       }
     ]
+  },
+
+  trace: {
+    kicker: 'Solo project · Product prototype · 2026',
+    title: 'TRACE',
+    summary: 'Transcribe, Read, And Check by Ear: a first draft of the bass part for any song, and an easy way to check it against the real recording.',
+    image: '/assets/work-trace.webp',
+    alt: 'TRACE on a laptop: a song’s tab and sheet music with a playback marker on bar 3',
+    overview: {
+      role: 'Solo: problem framing, product design, prototyping and the accuracy study',
+      tools: 'Python, JavaScript, alphaTab, Spotify Basic Pitch, Demucs, Claude Code',
+      skills: ['Problem framing', 'User journey design', 'Fake-door testing', 'Accessibility', 'Prototyping', 'Accuracy evaluation', 'Rights and licensing'],
+      awards: [],
+      links: [
+        ['GitHub', 'https://github.com/SSaiyan13/trace'],
+        ['Try it in your browser', 'https://codespaces.new/SSaiyan13/trace?quickstart=1']
+      ]
+    },
+    sections: [
+      {
+        id: 'problem',
+        label: 'Problem',
+        blocks: [
+          { p: 'Most songs have no published bass part. The ones that exist cost money, and free tabs online are often wrong in ways you can’t see until you’ve already learned the mistake. Learning by ear works, but it’s slow: hours of rewinding to work out one bar, with the bass buried under drums, guitars and vocals.' },
+          { p: 'Automatic transcription tools exist, but they hand you a wall of notes with no reason to trust them.' },
+          { quote: 'Musicians don’t need a perfect transcription. They need a fast first draft, and a way to tell where it’s wrong.' }
+        ]
+      },
+      {
+        id: 'research',
+        label: 'Research',
+        blocks: [
+          { p: 'I mapped what a hobby bassist actually runs into when learning a song, and what each pain point needed from the product:' },
+          {
+            table: {
+              head: ['Pain point', 'What it feels like', 'What TRACE does'],
+              rows: [
+                ['No sheet music for the song', 'Nothing published, or it costs money', 'Writes out the whole song from the recording'],
+                ['Free tabs are wrong, invisibly', 'You learn a mistake and find out later', 'Plays the real bass while a marker follows the page'],
+                ['The bass is buried in the mix', 'Hard to hear what you’re learning', 'Separates the bass from the other instruments'],
+                ['Learning by ear is slow', 'Hours of rewinding one bar', 'Tap any bar, one-tap repeat, slow down without changing pitch'],
+                ['The song isn’t there', 'Dead end, you leave', 'Request this song, a demand signal for what to build next']
+              ],
+              highlight: 1
+            }
+          },
+          { p: 'I also tested the hardest assumption early: that an automatic draft could be good enough to learn from. That shaped the whole product around checking, not just reading.' }
+        ]
+      },
+      {
+        id: 'solution',
+        label: 'Solution',
+        blocks: [
+          { p: 'TRACE runs a song through four steps: separate the bass from the mix (Demucs), find the notes (Spotify’s Basic Pitch), then tidy them into readable music. My own code lines up the rhythm, works out the key, adds ties and picks a string and fret for every note. The result shows as tab, sheet music or both, for the whole song.' },
+          {
+            cards: [
+              ['Check by ear', 'Play runs the real bass from the recording while a marker moves through the music. Where the sound and the page disagree, the tab is wrong there.'],
+              ['Practice tools', 'Tap any bar to start there, repeat 1, 2, 4 or 8 bars with one tap, and slow down to 50% without changing the pitch.'],
+              ['Honest by design', '“First draft” warnings, confidence shown for key and tempo guesses, and a wait screen that explains each step in plain words.'],
+              ['Fake doors', 'Request this song, plus guitar, piano and drums marked “coming later”, measure demand before anything gets built.']
+            ]
+          },
+          { p: 'The decisions that shaped it:' },
+          {
+            list: [
+              'The real recording is the default sound, not the synthesized tab. A synthesized tab always sounds right to itself; only the real recording can expose its mistakes.',
+              'Rights first: no copyrighted audio or transcriptions in the public repo. A real product needs user-uploaded audio processed only for that user, or licensed catalogue deals.',
+              'A maroon and black identity with a logo that fuses a treble and a bass clef, and wording that doesn’t assume bass, so more instruments can follow.',
+              'Built for practising: works on laptop, iPad and phone, with the player pinned to the bottom of the screen and 44px+ touch targets.'
+            ]
+          },
+          { photos: [['/assets/case-trace-find.webp', 'TRACE front page: search, instrument picker and ready-to-play song cards'], ['/assets/case-trace-wait.webp', 'TRACE wait screen explaining each processing step in plain words']] }
+        ]
+      },
+      {
+        id: 'results',
+        label: 'Results',
+        blocks: [
+          { p: 'I checked TRACE’s tab for one full song (Tame Impala’s “Loser”, 77 bars) against two independent human transcriptions, comparing which notes appear, in order.' },
+          { stats: [['95%', 'Notes the two human transcriptions agree on'], ['89%', 'Of those agreed notes that TRACE got'], ['<5%', 'Extra notes TRACE added']] },
+          { p: 'The surprise wasn’t wrong notes. It was where beat 1 starts: TRACE guessed it from the first note it heard, which came just before the first real downbeat, so every note looked a little late. The pitches were right, but the rhythm looked wrong. Fixing it doubled the number of bars that matched exactly, and it’s exactly the kind of mistake a player hears straight away with the marker running.' },
+          { p: 'One song, checked by eye against screenshots of the references, comparing pitch only. It’s a first signal, not a benchmark. Most remaining misses came from the note detector, not from my arranging code, which points to where the next improvement is.' },
+          { photos: [['/assets/case-trace-ipad.webp', 'TRACE on an iPad: sheet music and tab with the playback marker and player'], ['/assets/case-trace-phone.webp', 'TRACE on a phone: tab with the player pinned to the bottom']] }
+        ]
+      },
+      {
+        id: 'reflections',
+        label: 'Reflections',
+        blocks: [
+          { p: 'Building this alone meant holding every role at once, and the hardest part was being honest about what the prototype can and can’t do. Checking it against real transcriptions taught me that two careful people still disagree on about one note in twenty, so the goal was never perfect. It was earning a player’s trust.' },
+          { p: 'Next: transposing into other keys, better beat detection and time-signature changes, more instruments, and testing with real players.' }
+        ]
+      }
+    ]
   }
 };
