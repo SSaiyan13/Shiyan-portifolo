@@ -103,18 +103,6 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
           })}
         </div>
 
-        <div data-reveal="" style={{ padding: 'clamp(24px,5vh,70px) clamp(18px,3.2vw,44px) 0' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'clamp(10px,1.4vh,18px)', padding: 'clamp(22px,3vw,44px)', border: '1px dashed rgba(224,166,190,.34)', borderRadius: 14, background: 'rgba(92,0,41,.12)' }}>
-            <span style={{ fontSize: 9.5, letterSpacing: '.24em', textTransform: 'uppercase', color: '#E0A6BE' }}>Future project · In progress</span>
-            <span style={{ fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(26px,3.6vw,56px)', lineHeight: 1.05, letterSpacing: '-.025em', color: '#F7F0F0', textWrap: 'balance' }}>
-              Something for music transcription.
-            </span>
-            <span style={{ maxWidth: '46ch', fontSize: 'clamp(14px,1.1vw,17px)', fontWeight: 300, lineHeight: 1.6, color: 'rgba(247,240,240,.66)' }}>
-              I&rsquo;m building it now. More here once there&rsquo;s something to play with.
-            </span>
-          </div>
-        </div>
-
         <div data-reveal="" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 20, padding: 'clamp(38px,6vh,80px) clamp(18px,3.2vw,44px) clamp(58px,9vh,120px)' }}>
           <span style={{ fontFamily: "'Bodoni Moda',serif", fontStyle: 'italic', fontSize: 'clamp(22px,2.6vw,40px)', lineHeight: 1.15, letterSpacing: '-.02em', color: 'rgba(247,240,240,.62)', maxWidth: '26ch', textWrap: 'pretty' }}>
             Next, the part that plugs in.
