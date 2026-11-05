@@ -393,7 +393,14 @@ export const caseStudies = {
               highlight: 1
             }
           },
-          { p: 'What would build trust: the most common free-text answer (about 10 people) was hearing it and judging for themselves. Small, friendly sample, so I treat it as a signal, not proof.' },
+          { p: 'What gets in the way, out of 47 responses (people could pick more than one):' },
+          {
+            table: {
+              head: ['Problem', 'Responses'],
+              rows: [['Paywalls', '37'], ['Hard to find', '15'], ['Wrong key', '13'], ['Can’t tell if it’s right', '11'], ['Hard to read', '10'], ['Wrong notes', '9']]
+            }
+          },
+          { p: 'What would build trust: the most common free-text answer (about 10 people) was hearing it and judging for themselves. Small, friendly sample from my own network, so I treat it as a signal, not proof.' },
           { p: 'The gap in the market. Paid AI tools already turn audio into tab, so the gap isn’t “nobody does this”. It’s that good output sits behind a paywall, and none of these tools say they help a nervous beginner check the result against the real recording (public pages, checked Oct 31, 2026).' },
           {
             table: {
@@ -408,7 +415,8 @@ export const caseStudies = {
               ],
               highlight: 5
             }
-          }
+          },
+          { quote: 'Plenty of tabs. Nothing you can check. The gap: one page where the tab, the key and the real recording sit together, so you can check it by ear.' }
         ]
       },
       {
@@ -442,11 +450,26 @@ export const caseStudies = {
         id: 'results',
         label: 'Results',
         blocks: [
-          { p: 'TRACE wrote tab and sheet music for the whole of “Loser” by Tame Impala (77 bars), in the right key (F minor) and tempo (83 BPM). I then compared its notes with two independent human transcriptions of the same song, a YouTube bass tutorial and Songsterr.' },
+          { p: 'Each success metric is a feature of the product that answers one pain point, so you can open the prototype and see each one. I won’t publish a number I haven’t measured.' },
+          {
+            table: {
+              head: ['Pain point', 'Success metric (a feature)', 'Result'],
+              rows: [
+                ['Paywalls (37 of 47)', 'Free to start, so Maya is never stuck behind a subscription', 'Yes. The prototype and the code are free and open source.'],
+                ['No accurate version exists', 'The whole song as tab and sheet music, not one page', 'Yes. All 77 bars of “Loser” by Tame Impala.'],
+                ['Wrong key (13 of 47)', 'The key is detected, shown, and can be changed on the page', 'Yes. F minor found and shown, tempo 83 BPM.'],
+                ['Can’t tell if it’s right', 'She hears the real bass next to the tab, with a marker that follows along', 'Yes, and TRACE matches 89% of the notes two human transcriptions agree on.'],
+                ['Hard to read (10 of 47)', 'Tab, sheet music or both, with ties and dotted notes, and a clean PDF to print', 'Yes.'],
+                ['Never tried, low confidence', 'The tool does the ear work, so she only has to press play and listen', 'Yes. No ear training needed.'],
+                ['Too slow by hand', 'Time to get a tab: minutes against hours', 'By hand: 150 minutes for about half the song. Tool time still to measure.']
+              ],
+              highlight: 3
+            }
+          },
           { stats: [['95%', 'Notes the two human transcriptions agree on'], ['89%', 'Of those agreed notes that TRACE got'], ['<5%', 'Extra notes TRACE added']] },
-          { p: 'Pitches only, one song, read by eye from screenshots: a first signal, not a benchmark. For scale, working out about half the song by hand took me 150 minutes.' },
+          { p: 'I compared TRACE’s notes with two independent human transcriptions of the same song, a YouTube bass tutorial and Songsterr. Pitches only, one song, read by eye from screenshots: a first signal, not a benchmark.' },
           { photos: [['/assets/case-trace-ipad.webp', 'TRACE on an iPad: sheet music and tab with the playback marker and player'], ['/assets/case-trace-phone.webp', 'TRACE on a phone: tab with the player pinned to the bottom']] },
-          { p: 'Next: interview casual players like Maya, test with more bass players, add transposing and wrong-note fixing, and test whether people would use a free-to-start tool.' }
+          { p: 'Next: build the same page for guitar and piano, the instruments Maya plays, add more songs, then transposing and wrong-note fixing, and sort out licensing before any public launch.' }
         ]
       },
       {
@@ -465,8 +488,13 @@ export const caseStudies = {
               ]
             }
           },
-          { p: 'I wrote the survey and ran it myself, and used Claude to help plan the project, write and debug the page and the fingering code, and tally the survey results.' }
+          { p: 'AI does the listening; I decide what’s right. I wrote and ran the survey myself, chose the problem and the song, and checked the result against two human transcriptions. Claude helped me plan the project, write and debug the page and the fingering code, and tally the survey results.' }
         ]
+      },
+      {
+        id: 'slides',
+        label: 'Slides',
+        blocks: [{ embed: { src: '/assets/trace-pitch-deck.pdf#navpanes=0&view=Fit', href: '/assets/trace-pitch-deck.pdf', label: 'TRACE pitch deck' } }]
       },
       {
         id: 'reflections',
@@ -476,8 +504,8 @@ export const caseStudies = {
           { p: 'What would make me change course:' },
           {
             list: [
-              'If testers can’t tell whether the tab is right, or most wouldn’t play from it, “hear it and judge it” isn’t enough and I’d rethink the trust problem first.',
-              'If bass players wouldn’t use it, I’d test the idea on guitar or piano players instead, since the survey had far more of them.',
+              'If the tab and the real bass often disagree when I check them myself, “hear it and judge it” isn’t enough and I’d rethink the trust problem first.',
+              'If demand sits with guitar and piano players, as the survey suggests, I’d build those instruments first (only 4 of 47 played bass).',
               'If most notes in a 16-bar check are wrong, the separation and note-detection steps come before anything else.',
               'If the real problem is paying for tabs rather than finding them, it becomes a pricing question, not a transcription one.'
             ]
