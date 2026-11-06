@@ -45,6 +45,8 @@ const plateStyle = {
   down: { left: '50%', top: 'calc(100% + 18px)', transform: 'translate3d(-50%,-10px,0)', textAlign: 'center' }
 };
 
+const inRect = (e, r) => e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom;
+
 const Hero = forwardRef(function Hero({ onOpen }, ref) {
   const roomRef = useRef(null);
   const frameRefs = useRef([]);
@@ -59,6 +61,18 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
   const sceneRef = useRef(null);
   // Whether a tap has the camera close on the polaroid wall.
   const memoriesRef = useRef(false);
+  // The hotspot the mouse has focused, and where it was on screen before the zoom.
+  const heldRef = useRef(null);
+  useEffect(() => {
+    const onMove = (e) => {
+      const held = heldRef.current;
+      if (e.pointerType !== 'mouse' || !held || held.el.contains(e.target) || inRect(e, held.rect)) return;
+      heldRef.current = null;
+      sceneRef.current?.setFocus(null);
+    };
+    addEventListener('pointermove', onMove, { passive: true });
+    return () => removeEventListener('pointermove', onMove);
+  }, []);
   const introRef = useRef(false);
   const fitRef = useRef(() => {});
 
@@ -309,8 +323,21 @@ const Hero = forwardRef(function Hero({ onOpen }, ref) {
                 memoriesRef.current = !memoriesRef.current;
                 sceneRef.current?.setFocus(memoriesRef.current ? 'memories' : null);
               }}
-              onPointerEnter={(e) => e.pointerType === 'mouse' && sceneRef.current?.setFocus(h.key)}
-              onPointerLeave={(e) => e.pointerType === 'mouse' && sceneRef.current?.setFocus(null)}
+              onPointerEnter={(e) => {
+                if (e.pointerType !== 'mouse') return;
+                const held = heldRef.current;
+                if (held && held.key !== h.key && inRect(e, held.rect)) return;
+                heldRef.current = { key: h.key, el: e.currentTarget, rect: held?.key === h.key ? held.rect : e.currentTarget.getBoundingClientRect() };
+                sceneRef.current?.setFocus(h.key);
+              }}
+              onPointerLeave={(e) => {
+                if (e.pointerType !== 'mouse') return;
+                // Zooming in moves the object out from under the cursor; it stays focused
+                // until the cursor leaves where the object was before the zoom.
+                if (e.relatedTarget && heldRef.current?.key === h.key && inRect(e, heldRef.current.rect)) return;
+                heldRef.current = null;
+                sceneRef.current?.setFocus(null);
+              }}
               onFocus={() => sceneRef.current?.setFocus(h.key)}
               onBlur={() => {
                 memoriesRef.current = false;
