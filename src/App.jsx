@@ -7,14 +7,24 @@ import WorkPanel from './components/panels/WorkPanel.jsx';
 import MusicPanel from './components/panels/MusicPanel.jsx';
 import AboutPanel from './components/panels/AboutPanel.jsx';
 import { mountAmbient } from './lib/ambient.js';
+import { caseStudies } from './data/caseStudies.js';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const EASE = 'power3.out';
 
+// A link like /projects/jolty opens straight onto that case study, over Technical Projects.
+const linkedCase = (() => {
+  const id = location.pathname.match(/^\/projects\/([\w-]+)\/?$/)?.[1];
+  if (!id || !caseStudies[id]) return null;
+  // Marks this page as showing that case study, so stepping back to it shows it again.
+  history.replaceState({ caseId: id }, '');
+  return id;
+})();
+
 export default function App() {
-  const [open, setOpen] = useState(null); // logical target: null | 'work' | 'music' | 'about'
-  const [mountedKey, setMountedKey] = useState(null); // what's actually rendered
+  const [open, setOpen] = useState(linkedCase ? 'work' : null); // logical target: null | 'work' | 'music' | 'about'
+  const [mountedKey, setMountedKey] = useState(linkedCase ? 'work' : null); // what's actually rendered
 
   const stageRef = useRef(null);
   const panelRef = useRef(null);
@@ -106,7 +116,7 @@ export default function App() {
       />
 
       <div data-panels="">
-        {mountedKey === 'work' && <WorkPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} onOpen={openPanel} />}
+        {mountedKey === 'work' && <WorkPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} onOpen={openPanel} linkedCase={linkedCase} />}
         {mountedKey === 'music' && <MusicPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} />}
         {mountedKey === 'about' && <AboutPanel ref={panelRef} closeRef={closeBtnRef} onClose={closePanel} />}      </div>
     </div>
