@@ -34,6 +34,15 @@ export default function CaseStudy({ study, onClose }) {
     return () => removeEventListener('keydown', onKey, true);
   }, [onClose]);
 
+  // The browser tab names the project while its case study is open.
+  useEffect(() => {
+    const before = document.title;
+    document.title = `${study.title} · Shiyan Gunasegaram`;
+    return () => {
+      document.title = before;
+    };
+  }, [study]);
+
   // Light the nav link for whichever section crosses the upper third of the screen.
   useEffect(() => {
     const sc = scrollerRef.current;

@@ -5,26 +5,36 @@ import { workProjects } from '../../data/work.js';
 import { caseStudies } from '../../data/caseStudies.js';
 import { useScrollReveal } from '../../lib/useScrollReveal.js';
 
-const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, ref) {
+const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen, linkedCase = null }, ref) {
   useScrollReveal(ref, []);
   // The open case study, if any, and the card that opened it (focus goes back there).
-  const [caseId, setCaseId] = useState(null);
+  // A /projects/<id> link opens with that case study already showing.
+  const [caseId, setCaseId] = useState(linkedCase);
   const openerRef = useRef(null);
-  // Opening a case study adds a history step, so the phone's back gesture closes
-  // it instead of leaving the site; closing it from the page steps back again.
+  // Each case study has its own address, /projects/<id>, so it can be linked to.
+  // Opening one adds a history step, so the phone's back gesture closes it instead
+  // of leaving the site, and closing it from the page steps back again. A case
+  // study the visitor arrived on directly has no step behind it: closing it just
+  // changes the address back to the home page.
   const openCase = (id, el) => {
     openerRef.current = el;
-    history.pushState({ caseId: id }, '');
+    history.pushState({ caseId: id, stepped: true }, '', `/projects/${id}`);
     setCaseId(id);
   };
-  const closeCase = useCallback(() => history.back(), []);
+  const closeCase = useCallback(() => {
+    if (history.state?.stepped) return history.back();
+    history.replaceState(null, '', '/');
+    setCaseId(null);
+  }, []);
   useEffect(() => {
-    const onBack = () => {
-      setCaseId(null);
-      requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
+    // Back (or forward) to an address: show the case study it names, or none.
+    const onPop = (e) => {
+      const id = e.state?.caseId ?? null;
+      setCaseId(id);
+      if (!id) requestAnimationFrame(() => openerRef.current?.focus({ preventScroll: true }));
     };
-    addEventListener('popstate', onBack);
-    return () => removeEventListener('popstate', onBack);
+    addEventListener('popstate', onPop);
+    return () => removeEventListener('popstate', onPop);
   }, []);
 
   return (
@@ -115,7 +125,7 @@ const WorkPanel = forwardRef(function WorkPanel({ closeRef, onClose, onOpen }, r
           </button>
         </div>
       </div>
-      {caseId && caseStudies[caseId] && <CaseStudy study={caseStudies[caseId]} onClose={closeCase} />}
+      {caseId && caseStudies[caseId] && <CaseStudy key={caseId} study={caseStudies[caseId]} onClose={closeCase} />}
     </div>
   );
 });
