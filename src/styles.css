@@ -13,10 +13,6 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 [data-scroller]::-webkit-scrollbar-thumb { background: #3A2530; border-radius: 6px; }
 
 
-[data-hot]:hover [data-ring], [data-hot]:focus-visible [data-ring] {
-  opacity: 1 !important;
-  box-shadow: 0 0 0 1px rgba(224,166,190,.55), 0 0 44px 6px rgba(142,6,64,.55), inset 0 0 30px rgba(142,6,64,.28) !important;
-}
 [data-hot]:hover [data-plate], [data-hot]:focus-visible [data-plate] { opacity: 1 !important; }
 [data-hot]:hover [data-plate="up"], [data-hot]:focus-visible [data-plate="up"] { transform: translate3d(-50%,0,0) !important; }
 [data-hot]:hover [data-plate="down"], [data-hot]:focus-visible [data-plate="down"] { transform: translate3d(-50%,0,0) !important; }
@@ -26,15 +22,16 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 @keyframes sg-hint { 0%, 100% { transform: scale(1); opacity: .55; } 50% { transform: scale(1.5); opacity: 1; } }
 [data-hintdot] { animation: sg-hint 2.2s ease-in-out infinite; }
 
-/* The clickable objects breathe in time with the hint's dot: a brighter copy of each
-   ring fades in and out over the resting one, so only opacity is animated. */
-@keyframes sg-ring { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
-[data-ring]::after {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; opacity: 0;
-  box-shadow: 0 0 0 1px rgba(224,166,190,.6), 0 0 34px 7px rgba(142,6,64,.62), inset 0 0 22px rgba(142,6,64,.22);
-  animation: sg-ring 2.2s ease-in-out infinite;
+/* Each clickable object carries a small marker that breathes in time with the
+   hint's dot. Under the pointer the object itself lights up, so the marker goes. */
+[data-beacon] {
+  position: absolute; left: 50%; top: 50%; width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px; border-radius: 50%;
+  background: #E0A6BE; box-shadow: 0 0 0 1px rgba(224,166,190,.5), 0 0 16px 4px rgba(142,6,64,.85);
+  animation: sg-hint 2.2s ease-in-out infinite; transition: opacity .35s; pointer-events: none;
 }
-[data-hot]:hover [data-ring]::after, [data-hot]:focus-visible [data-ring]::after { animation: none; }
+[data-beacon]::after { content: ''; position: absolute; inset: -9px; border-radius: 50%; border: 1px solid rgba(224,166,190,.45); }
+[data-beacon][data-small] { width: 8px; height: 8px; margin: -4px 0 0 -4px; top: 30%; }
+[data-hot]:hover [data-beacon], [data-hot]:focus-visible [data-beacon] { opacity: 0 !important; animation: none; }
 [data-hint-touch] { display: none; }
 @media (hover: none) {
   [data-hint-hover] { display: none; }
@@ -120,7 +117,7 @@ button { font: inherit; color: inherit; background: none; border: 0; margin: 0; 
 
 @media (prefers-reduced-motion: reduce) {
   [data-hintdot] { animation: none; opacity: 1; }
-  [data-ring]::after { animation: none; }
+  [data-beacon] { animation: none; }
 }
 
 /* Case study section links scroll sideways on small screens, without a scrollbar. */
