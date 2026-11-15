@@ -107,7 +107,7 @@ export default function App() {
     <div data-root="" style={{ position: 'relative', width: '100%', height: '100vh', minHeight: '100dvh', overflow: 'hidden', background: '#0B0D0C' }}>
       <Header />
 
-      <Hero ref={stageRef} onOpen={openPanel} open={open} />
+      <Hero ref={stageRef} onOpen={openPanel} />
 
       <canvas
         ref={ambientCanvasRef}

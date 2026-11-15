@@ -10,6 +10,28 @@
       href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,700;1,6..96,400;1,6..96,500&family=Sora:wght@200;300;400;500;600&display=swap"
       rel="stylesheet"
     />
+    <script>
+      // Start downloading the 3D room alongside the app's code instead of after it,
+      // so the room is ready sooner. Picks the same model the page will (see Hero.jsx).
+      (function () {
+        if (navigator.connection && navigator.connection.saveData) return;
+        var touch = matchMedia('(pointer: coarse)').matches;
+        var shortSide = Math.min(screen.width, screen.height);
+        var lite = touch || (shortSide > 0 && shortSide <= 820) || (navigator.deviceMemory || 8) <= 4;
+        [
+          ['/assets/room.png', 'image', null],
+          ['/assets/bass-cut.webp', 'image', 'anonymous'],
+          [lite ? '/assets/room-3d-lite.glb' : '/assets/room-3d.glb', 'fetch', 'anonymous']
+        ].forEach(function (f) {
+          var l = document.createElement('link');
+          l.rel = 'preload';
+          l.href = f[0];
+          l.as = f[1];
+          if (f[2]) l.crossOrigin = f[2];
+          document.head.appendChild(l);
+        });
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
